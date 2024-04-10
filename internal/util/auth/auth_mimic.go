@@ -23,7 +23,7 @@ func ValidateToken(token string) (bool, error) {
 	switch prefix {
 
 	case UnauthorizedUserPrefix, UnauthorizedAdminPrefix:
-		return false, &serverr.Error{Description: "Пользователь не авторизован", ErrType: serverr.AuthError, HttpStatus: 401}
+		return false, &serverr.ApiError{Description: "Пользователь не авторизован", ErrType: serverr.AuthErrorType, HttpStatus: 401}
 
 	case AuthorizedUserPrefix:
 		return false, nil
@@ -32,7 +32,7 @@ func ValidateToken(token string) (bool, error) {
 		return true, nil
 
 	default:
-		return false, &serverr.Error{Description: "Пользователь не авторизован", ErrType: serverr.AuthError, HttpStatus: 401}
+		return false, &serverr.ApiError{Description: "Пользователь не авторизован", ErrType: serverr.AuthErrorType, HttpStatus: 401}
 
 	}
 
