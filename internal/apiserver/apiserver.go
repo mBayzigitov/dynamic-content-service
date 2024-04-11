@@ -33,6 +33,8 @@ func (serv *ApiServer) Start() error {
 	router := mux.NewRouter()
 	subrouter := router.PathPrefix("/api/v1").Subrouter()
 
+	subrouter.Use(service.TokenValidationMiddleware)
+
 	cr := repo.NewCacheRepo(serv.redis)
 
 	br := repo.NewBannerRepository(serv.p)

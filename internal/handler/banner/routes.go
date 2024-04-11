@@ -36,6 +36,19 @@ func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Requ
 }
 
 func (bh *BannerHandler) handleBannerCreation(w http.ResponseWriter, r *http.Request) {
+	isAdmin, ok := r.Context().Value("isAdmin").(bool)
+	if !ok {
+		defer bh.l.Fatal(serverr.TokenParsingError)
+
+		http.Error(w, serverr.TokenParsingError.JsonBody(), serverr.TokenParsingError.HttpStatus)
+		return
+	}
+
+	if !isAdmin {
+		http.Error(w, serverr.ForbiddenAccessError.JsonBody(), serverr.ForbiddenAccessError.HttpStatus)
+		return
+	}
+
 	var rb dto.CreateBannerDto
 	if err := json.NewDecoder(r.Body).Decode(&rb); err != nil {
 		apierr := serverr.InvalidRequestError

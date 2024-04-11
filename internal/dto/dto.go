@@ -12,6 +12,12 @@ type CreateBannerDto struct {
 	IsActive  bool            `json:"is_active"`
 }
 
+type GetBannerDto struct {
+	TagId           int64 `json:"tag_id"`
+	FeatureId       int64 `json:"feature_id"`
+	UseLastRevision int64 `json:"use_last_revision"`
+}
+
 type CreateBannerResponseDto struct {
 	Description string `json:"description"`
 	BannerId    int64  `json:"banner_id"`
