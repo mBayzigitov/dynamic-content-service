@@ -44,6 +44,7 @@ func main() {
 	serv := apiserver.New(
 		config,
 		logger.Sugar(),
+		pool,
 	)
 	if err := serv.Start(); err != nil {
 		log.Fatal(err)

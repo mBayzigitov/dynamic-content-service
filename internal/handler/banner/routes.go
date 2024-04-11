@@ -2,7 +2,6 @@ package banner
 
 import (
 	"encoding/json"
-	"fmt"
 	"github.com/go-playground/validator/v10"
 	"github.com/gorilla/mux"
 	"github.com/mBayzigitov/dynamic-content-service/internal/dto"
@@ -37,23 +36,32 @@ func (bh *BannerHandler) handleBannerCreation(w http.ResponseWriter, r *http.Req
 		apierr := serverr.InvalidRequestError
 		defer bh.l.Warn(apierr.ErrType)
 
-		resp, _ := json.Marshal(apierr)
-		http.Error(w, string(resp), apierr.HttpStatus)
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
 		return
 	}
 
 	if err := bh.valid.Struct(rb); err != nil {
-		errors := fmt.Sprintf("%s", err.(validator.ValidationErrors))
-		apierr := serverr.NewInvalidRequestError(errors)
-		resp, _ := json.Marshal(apierr)
+		verrs := err.(validator.ValidationErrors)
 
-		http.Error(w, string(resp), apierr.HttpStatus)
+		var errBody string
+		if verrs != nil && len(verrs) > 0 {
+			f := verrs[0]
+			errBody = "field '" + f.Field() + "' validation failed: '" + f.ActualTag() + "' is violated"
+		} else {
+			errBody = "validation error"
+		}
+
+		apierr := serverr.NewInvalidRequestError(errBody)
+
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
 		return
 	}
 
-	if apierr := bh.service.CreateBanner(rb.TagIds, rb.FeatureId, rb.Content, rb.IsActive); apierr != nil {
-		// write apierr to user response
+	if createdId, apierr := bh.service.CreateBanner(rb.ToModel()); apierr != nil {
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
 	} else {
-		// return 200
+		w.WriteHeader(http.StatusOK)
+		resp := dto.NewCreateBannerResponse(createdId).JsonBody()
+		w.Write([]byte(resp))
 	}
 }

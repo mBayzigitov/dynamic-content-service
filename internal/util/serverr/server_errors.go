@@ -1,10 +1,13 @@
 package serverr
 
+import "encoding/json"
+
 // error types
 const (
 	UserUnauthorized = "Пользователь не авторизован"
 	AccessRestricted = "Пользователь не имеет доступа"
 	InvalidData = "Некорректные данные"
+	ServerError
 )
 
 // defined errors
@@ -22,6 +25,11 @@ var (
 		ErrType: "Неверный формат запроса",
 		HttpStatus: 400,
 	}
+	StorageError = &ApiError{
+		Description: ServerError,
+		ErrType:     "Ошибка хранилища данных",
+		HttpStatus:  0,
+	}
 )
 
 type ApiError struct {
@@ -30,11 +38,16 @@ type ApiError struct {
 	HttpStatus  int    `json:"-"`
 }
 
+func (apierr *ApiError) JsonBody() string {
+	resp, _ := json.Marshal(apierr)
+	return string(resp)
+}
+
 func NewInvalidRequestError(errm string) *ApiError {
 	return &ApiError{
 		Description: "Некорректные данные",
 		ErrType: errm,
-		HttpStatus: 401,
+		HttpStatus: 400,
 	}
 }
 
