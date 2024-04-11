@@ -1,4 +1,4 @@
-package config
+package apiserver
 
 import (
 	"context"
@@ -10,7 +10,7 @@ import (
 
 type (
 	AppConfig struct {
-		ServerPort string `env:"SERVER_PORT"`
+		ServerPort string `toml:"server_port"`
 		Postgres   *Postgres
 	}
 
@@ -43,19 +43,26 @@ func loadEnv() error {
 }
 
 func GetAppConfig() (*AppConfig, error) {
-	err := loadEnv()
-	if err != nil {
-		return nil, err
-	}
-
+	loadEnv()
 	ctx := context.Background()
 
 	var config AppConfig
-	err = envconfig.Process(ctx, &config)
+	err := envconfig.Process(ctx, &config)
 
 	if err != nil {
 		return nil, err
 	}
 
 	return &config, nil
+}
+
+func (pg *Postgres) GetDbUrl() string {
+	return fmt.Sprintf(
+		"postgres://%s:%s@%s:%s/%s",
+		pg.User,
+		pg.Password,
+		pg.Host,
+		pg.Port,
+		pg.DbName,
+	)
 }

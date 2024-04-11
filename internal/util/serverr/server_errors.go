@@ -2,27 +2,40 @@ package serverr
 
 // error types
 const (
-	AuthErrorType = "AUTH_ERROR"
+	UserUnauthorized = "Пользователь не авторизован"
+	AccessRestricted = "Пользователь не имеет доступа"
+	InvalidData = "Некорректные данные"
 )
 
 // defined errors
 var (
 	UserUnauthorizedError = &ApiError{
-		Description: "Пользователь не авторизован",
-		ErrType:     AuthErrorType,
+		Description: UserUnauthorized,
 		HttpStatus:  401,
 	}
 	ForbiddenAccessError = &ApiError{
-		Description: "Пользователь не имеет доступа",
-		ErrType:     AuthErrorType,
+		Description: AccessRestricted,
 		HttpStatus:  403,
+	}
+	InvalidRequestError = &ApiError{
+		Description: InvalidData,
+		ErrType: "Неверный формат запроса",
+		HttpStatus: 400,
 	}
 )
 
 type ApiError struct {
-	Description string `json:"-"`
-	ErrType     string `json:"type"`
+	Description string `json:"description"`
+	ErrType     string `json:"error"`
 	HttpStatus  int    `json:"-"`
+}
+
+func NewInvalidRequestError(errm string) *ApiError {
+	return &ApiError{
+		Description: "Некорректные данные",
+		ErrType: errm,
+		HttpStatus: 401,
+	}
 }
 
 func (e *ApiError) Error() string {

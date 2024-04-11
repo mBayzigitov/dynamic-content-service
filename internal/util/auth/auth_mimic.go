@@ -13,7 +13,7 @@ const (
 
 // ValidateToken
 /*
-Imitates the authentication service
+Imitates the authentication handler
 
 Returns true if token belongs to administrator, otherwise returns false
 */
