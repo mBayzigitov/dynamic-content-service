@@ -12,6 +12,7 @@ type (
 	AppConfig struct {
 		ServerPort string `toml:"server_port"`
 		Postgres   *Postgres
+		Redis      *Redis
 	}
 
 	Postgres struct {
@@ -20,6 +21,12 @@ type (
 		DbName   string `env:"PG_DBNAME"`
 		User     string `env:"PG_USER"`
 		Password string `env:"PG_PASSWORD"`
+	}
+
+	Redis struct {
+		Url      string `env:"REDIS_URL"`
+		Password string `env:"REDIS_PASSWORD"`
+		Db       int    `env:"REDIS_DB"`
 	}
 )
 

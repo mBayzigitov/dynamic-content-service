@@ -8,21 +8,27 @@ import (
 )
 
 type BannerService struct {
-	l  *zap.SugaredLogger
-	br *repo.BannerRepository
+	l     *zap.SugaredLogger
+	br    *repo.BannerRepository
+	redis *repo.CacheRepo
 }
 
-func NewBannerService(br *repo.BannerRepository) *BannerService {
+func NewBannerService(br *repo.BannerRepository, redis *repo.CacheRepo) *BannerService {
 	loginst, _ := zap.NewDevelopment()
 	return &BannerService{
-		br: br,
-		l:  loginst.Sugar(),
+		br:    br,
+		l:     loginst.Sugar(),
+		redis: redis,
 	}
+}
+
+func (bs *BannerService) GetBanner() {
+	// TODO
 }
 
 func (bs *BannerService) CreateBanner(banner *models.BannerModel) (int64, *serverr.ApiError) {
 	// check if feature is present
-	featExists, err := bs.br.DoesFeatureExist(banner.FeatureId);
+	featExists, err := bs.br.DoesFeatureExist(banner.FeatureId)
 	if err != nil {
 		bs.l.Error(err.Error())
 		return -1, serverr.StorageError
@@ -33,7 +39,7 @@ func (bs *BannerService) CreateBanner(banner *models.BannerModel) (int64, *serve
 	}
 
 	// check if tags are present
-	tagsExist, err := bs.br.DoTagsExist(banner.TagIds);
+	tagsExist, err := bs.br.DoTagsExist(banner.TagIds)
 	if err != nil {
 		bs.l.Error(err.Error())
 		return -1, serverr.StorageError

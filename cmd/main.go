@@ -6,6 +6,7 @@ import (
 	"github.com/BurntSushi/toml"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mBayzigitov/dynamic-content-service/internal/apiserver"
+	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"log"
 )
@@ -41,10 +42,18 @@ func main() {
 	}
 	defer pool.Close()
 
+	rediscli := redis.NewClient(&redis.Options{
+		Addr:     config.Redis.Url,
+		Password: config.Redis.Password,
+		DB:       config.Redis.Db,
+	})
+	defer rediscli.Close()
+
 	serv := apiserver.New(
 		config,
 		logger.Sugar(),
 		pool,
+		rediscli,
 	)
 	if err := serv.Start(); err != nil {
 		log.Fatal(err)

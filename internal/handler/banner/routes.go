@@ -27,7 +27,12 @@ func NewHandler(service *service.BannerService) *BannerHandler {
 }
 
 func (bh *BannerHandler) RegisterRoutes(router *mux.Router) {
+	router.HandleFunc("/user_banner", bh.handleBannerGetting).Methods("GET")
 	router.HandleFunc("/banner", bh.handleBannerCreation).Methods("POST")
+}
+
+func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Request) {
+	// TODO
 }
 
 func (bh *BannerHandler) handleBannerCreation(w http.ResponseWriter, r *http.Request) {

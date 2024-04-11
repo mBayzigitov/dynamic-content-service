@@ -7,7 +7,7 @@ const (
 	UserUnauthorized = "Пользователь не авторизован"
 	AccessRestricted = "Пользователь не имеет доступа"
 	InvalidData = "Некорректные данные"
-	ServerError
+	ServerError = "Внутреннняя ошибка сервера"
 )
 
 // defined errors
@@ -28,7 +28,7 @@ var (
 	StorageError = &ApiError{
 		Description: ServerError,
 		ErrType:     "Ошибка хранилища данных",
-		HttpStatus:  0,
+		HttpStatus:  500,
 	}
 )
 
