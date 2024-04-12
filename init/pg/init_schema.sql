@@ -34,7 +34,7 @@ CREATE TABLE banners_tags
     banner_id BIGINT,
     tag_id    BIGINT,
     FOREIGN KEY (banner_id) REFERENCES banners (id) ON DELETE CASCADE,
-    FOREIGN KEY (tag_id) REFERENCES tags (id),
+    FOREIGN KEY (tag_id) REFERENCES tags (id) ON DELETE CASCADE,
     CONSTRAINT banners_tags_pk PRIMARY KEY (banner_id, tag_id)
 );
 

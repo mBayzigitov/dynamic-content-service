@@ -122,3 +122,7 @@ func (bs *BannerService) CreateBanner(banner *models.BannerTagsModel) (int64, *s
 
 	return createdId, nil
 }
+
+func (bs *BannerService) DeleteBanner(bannerId int64) *serverr.ApiError {
+	return bs.br.DeleteBanner(bannerId)
+}

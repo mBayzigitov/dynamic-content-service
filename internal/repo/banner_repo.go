@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mBayzigitov/dynamic-content-service/internal/models"
+	"github.com/mBayzigitov/dynamic-content-service/internal/util/serverr"
 	"go.uber.org/zap"
 	"strconv"
 	"strings"
@@ -194,6 +195,30 @@ func (br *BannerRepository) CreateBanner(banner *models.BannerTagsModel) (int64,
 	}
 
 	return bannerID, nil
+}
+
+func (br *BannerRepository) DeleteBanner(bannerId int64) *serverr.ApiError {
+	// Perform the update operation to set to_delete=true
+	result, err := br.p.Exec(
+		context.Background(),
+		"UPDATE banners SET to_delete=true WHERE id = $1 AND is_active = true",
+		bannerId,
+	)
+	if err != nil {
+		br.l.Error(err)
+		return serverr.StorageError
+	}
+
+	// check if the update affected any rows
+	rowsAffected := result.RowsAffected()
+	if rowsAffected == 0 {
+		// no rows were affected, indicating that the banner with the given id doesn't exist
+		return serverr.BannerNotFoundError
+	}
+
+	br.l.Infof("Banner [id=%d] has been marked as deleted successfully", bannerId)
+
+	return nil
 }
 
 

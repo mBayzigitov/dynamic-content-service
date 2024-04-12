@@ -16,6 +16,7 @@ const (
 	TagIdParam = "tag_id"
 	FeatureIdParam = "feature_id"
 	UseLastRevisionParam = "use_last_revision"
+	BannerIdPathVariable = "bannerId"
 )
 
 type BannerHandler struct {
@@ -35,8 +36,8 @@ func NewHandler(service *service.BannerService) *BannerHandler {
 
 func (bh *BannerHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/user_banner", bh.handleBannerGetting).Methods("GET")
-
 	router.HandleFunc("/banner", bh.handleBannerCreation).Methods("POST")
+	router.HandleFunc("/banner/{bannerId}", bh.handleBannerDeletion).Methods("DELETE")
 }
 
 // -------- Helper functions --------
@@ -48,7 +49,7 @@ func (bh *BannerHandler) adminOnlyAccess(r *http.Request) *serverr.ApiError {
 	}
 
 	if !isAdmin {
-		bh.l.Info(serverr.ForbiddenAccessError.ErrType)
+		bh.l.Info(serverr.ForbiddenAccessError.Error())
 		return serverr.ForbiddenAccessError
 	}
 
@@ -69,7 +70,7 @@ func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Requ
 	tagId, err = strconv.ParseInt(ti, 10, 64);
 	if ti == "" || err != nil {
 		apierror := serverr.NewInvalidRequestError("Некорректное значение tag_id")
-		bh.l.Info(apierror.ErrType)
+		bh.l.Info(apierror.Error())
 		http.Error(w, apierror.JsonBody(), apierror.HttpStatus)
 		return
 	}
@@ -77,7 +78,7 @@ func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Requ
 	featureId, err = strconv.ParseInt(fi, 10, 64);
 	if fi == "" || err != nil {
 		apierror := serverr.NewInvalidRequestError("Некорректное значение feature_id")
-		bh.l.Info(apierror.ErrType)
+		bh.l.Info(apierror.Error())
 		http.Error(w, apierror.JsonBody(), apierror.HttpStatus)
 		return
 	}
@@ -89,7 +90,7 @@ func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Requ
 
 		if err != nil {
 			apierror := serverr.NewInvalidRequestError("Некорректное значение use_last_revision")
-			bh.l.Info(apierror.ErrType)
+			bh.l.Info(apierror.Error())
 			http.Error(w, apierror.JsonBody(), apierror.HttpStatus)
 			return
 		}
@@ -114,14 +115,14 @@ func (bh *BannerHandler) handleBannerCreation(w http.ResponseWriter, r *http.Req
 	var rb dto.CreateBannerDto
 	if err := json.NewDecoder(r.Body).Decode(&rb); err != nil {
 		apierr := serverr.InvalidRequestError
-		bh.l.Info(apierr.ErrType)
+		bh.l.Info(apierr.Error())
 		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
 		return
 	}
 
 	err := rb.Validate(bh.valid)
 	if err != nil {
-		bh.l.Info(err.ErrType)
+		bh.l.Info(err.Error())
 		http.Error(w, err.JsonBody(), err.HttpStatus)
 		return
 	}
@@ -129,9 +130,44 @@ func (bh *BannerHandler) handleBannerCreation(w http.ResponseWriter, r *http.Req
 	if createdId, apierr := bh.service.CreateBanner(rb.ToModel()); apierr != nil {
 		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
 	} else {
-		w.WriteHeader(http.StatusOK)
+		w.WriteHeader(201)
 		resp := dto.JsonBody(dto.NewCreateBannerResponse(createdId))
 		w.Write([]byte(resp))
 		bh.l.Infof("Banner [id=%d] is created", createdId)
+	}
+}
+
+func (bh *BannerHandler) handleBannerDeletion(w http.ResponseWriter, r *http.Request) {
+	accessErr := bh.adminOnlyAccess(r)
+	if accessErr != nil {
+		http.Error(w, accessErr.JsonBody(), accessErr.HttpStatus)
+		return
+	}
+
+	qp := mux.Vars(r)
+	var bannerId int64
+	var err error
+
+	// check whether path param exists & has correct value
+	if bi, ok := qp[BannerIdPathVariable]; !ok {
+		apierr := serverr.NewInvalidRequestError("Отсутствует параметр 'bannerId'")
+		bh.l.Info(apierr)
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	} else {
+		bannerId, err = strconv.ParseInt(bi, 10, 64)
+		if err != nil {
+			apierr := serverr.NewInvalidRequestError("Неверный формат параметра 'bannerId'")
+			bh.l.Info(apierr)
+			http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+			return
+		}
+	}
+
+	// call service method and return response
+	if apierr := bh.service.DeleteBanner(bannerId); apierr != nil {
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+	} else {
+		w.WriteHeader(204)
 	}
 }

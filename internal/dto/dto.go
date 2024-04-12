@@ -21,26 +21,26 @@ type CreateBannerDto struct {
 }
 
 type CreateBannerResponseDto struct {
-	Description string `json:"description"`
 	BannerId    int64  `json:"banner_id"`
 }
 
 type GetBannerResponseDto struct {
-	Description string          `json:"description"`
 	Content     json.RawMessage `json:"content"`
+}
+
+type DeleteBannerResponseDto struct {
+	Description string `json:"description"`
 }
 
 // ///////////////////// TYPES INIT METHODS ///////////////////////
 func NewGetBannerResponse(banner *models.BannerModel) *GetBannerResponseDto {
 	return &GetBannerResponseDto{
-		Description: "JSON-отображение баннера",
 		Content:     banner.Content,
 	}
 }
 
 func NewCreateBannerResponse(banner_id int64) *CreateBannerResponseDto {
 	return &CreateBannerResponseDto{
-		Description: "Created",
 		BannerId:    banner_id,
 	}
 }

@@ -6,9 +6,9 @@ import "encoding/json"
 const (
 	UserUnauthorized = "Пользователь не авторизован"
 	AccessRestricted = "Пользователь не имеет доступа"
-	InvalidData    = "Некорректные данные"
-	ServerConflict = "Внутреннняя ошибка сервера"
-	BannerNotFound = "Баннер не найден"
+	InvalidData      = "Некорректные данные"
+	ServerConflict   = "Внутреннняя ошибка сервера"
+	BannerNotFound   = "Баннер не найден"
 )
 
 // defined errors
@@ -53,17 +53,9 @@ func (apierr *ApiError) JsonBody() string {
 
 	if apierr.ErrType != "" {
 		res, _ = json.Marshal(struct {
-			Description string `json:"description"`
-			ErrType     string `json:"error"`
+			ErrType string `json:"error"`
 		}{
-			Description: apierr.Description,
-			ErrType:     apierr.ErrType,
-		})
-	} else {
-		res, _ = json.Marshal(struct {
-			Description string `json:"description"`
-		}{
-			Description: apierr.Description,
+			ErrType: apierr.ErrType,
 		})
 	}
 
@@ -72,9 +64,8 @@ func (apierr *ApiError) JsonBody() string {
 
 func NewInvalidRequestError(errm string) *ApiError {
 	return &ApiError{
-		Description: "Некорректные данные",
-		ErrType:     errm,
-		HttpStatus:  400,
+		ErrType:    errm,
+		HttpStatus: 400,
 	}
 }
 
