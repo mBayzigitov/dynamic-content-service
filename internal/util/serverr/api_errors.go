@@ -6,8 +6,9 @@ import "encoding/json"
 const (
 	UserUnauthorized = "Пользователь не авторизован"
 	AccessRestricted = "Пользователь не имеет доступа"
-	InvalidData      = "Некорректные данные"
-	ServerError      = "Внутреннняя ошибка сервера"
+	InvalidData    = "Некорректные данные"
+	ServerConflict = "Внутреннняя ошибка сервера"
+	BannerNotFound = "Баннер не найден"
 )
 
 // defined errors
@@ -26,14 +27,18 @@ var (
 		HttpStatus:  400,
 	}
 	StorageError = &ApiError{
-		Description: ServerError,
+		Description: ServerConflict,
 		ErrType:     "Ошибка хранилища данных",
 		HttpStatus:  500,
 	}
 	TokenParsingError = &ApiError{
-		Description: ServerError,
+		Description: ServerConflict,
 		ErrType:     "Ошибка парсинга токена",
 		HttpStatus:  500,
+	}
+	BannerNotFoundError = &ApiError{
+		Description: BannerNotFound,
+		HttpStatus:  404,
 	}
 )
 
@@ -54,13 +59,13 @@ func (apierr *ApiError) JsonBody() string {
 			Description: apierr.Description,
 			ErrType:     apierr.ErrType,
 		})
+	} else {
+		res, _ = json.Marshal(struct {
+			Description string `json:"description"`
+		}{
+			Description: apierr.Description,
+		})
 	}
-
-	res, _ = json.Marshal(struct {
-		Description string `json:"description"`
-	}{
-		Description: apierr.Description,
-	})
 
 	return string(res)
 }

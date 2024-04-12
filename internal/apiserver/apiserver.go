@@ -19,6 +19,7 @@ type ApiServer struct {
 }
 
 func New(config *AppConfig, logger *zap.SugaredLogger, p *pgxpool.Pool, rc *redis.Client) *ApiServer {
+
 	return &ApiServer{
 		p:      p,
 		config: config,

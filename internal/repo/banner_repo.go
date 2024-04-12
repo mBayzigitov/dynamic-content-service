@@ -58,7 +58,50 @@ func (br *BannerRepository) DoTagsExist(tagsIds []int64) (bool, error) {
 	return count == len(tagsIds), nil
 }
 
-func (br *BannerRepository) CreateBanner(banner *models.BannerModel) (int64, error) {
+func (br *BannerRepository) GetBanner(tagId int64, featureId int64) (models.BannerModel, error) {
+	var banner models.BannerModel
+
+	// query with JOIN to select banner based on tagId, featureId, is_active=true, and to_delete=false
+	query := `
+		SELECT 
+			b.id,
+			b.content,
+			b.feature_id,
+			b.is_active,
+			b.created_at,
+			b.updated_at
+		FROM 
+			banners b
+		JOIN 
+			banners_tags bt ON b.id = bt.banner_id
+		WHERE 
+			bt.tag_id = $1
+			AND b.feature_id = $2 
+			AND b.is_active = true 
+			AND b.to_delete = false
+	`
+
+	err := br.p.QueryRow(
+		context.Background(),
+		query,
+		tagId,
+		featureId,
+	).Scan(
+		&banner.Id,
+		&banner.Content,
+		&banner.FeatureId,
+		&banner.IsActive,
+		&banner.CreatedAt,
+		&banner.UpdatedAt,
+	)
+	if err != nil {
+		return models.BannerModel{}, err
+	}
+
+	return banner, nil
+}
+
+func (br *BannerRepository) CreateBanner(banner *models.BannerTagsModel) (int64, error) {
 	// start a transaction
 	tx, err := br.p.Begin(context.Background())
 	if err != nil {
