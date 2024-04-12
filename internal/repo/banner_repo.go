@@ -58,6 +58,38 @@ func (br *BannerRepository) DoTagsExist(tagsIds []int64) (bool, error) {
 	return count == len(tagsIds), nil
 }
 
+// CheckIfDuplicates
+// Method that checks if a bunch of key (banner_id-feature_id-tag_id) already
+// exists to satisfy the condition of unambigious definition
+func (br *BannerRepository) CheckIfDuplicates(featureId int64, tagsIds []int64) (bool, error) {
+	query := `
+		SELECT COUNT(*)
+		FROM banners b
+			 JOIN public.banners_tags bt on b.id = bt.banner_id
+		WHERE
+		     b.feature_id = $1
+		 and bt.tag_id IN (`
+
+	params := make([]string, len(tagsIds))
+	for i, id := range tagsIds {
+		params[i] = strconv.FormatInt(id, 10)
+	}
+	query += strings.Join(params, ",") + ")"
+
+	var count int
+	err := br.p.QueryRow(
+		context.Background(),
+		query,
+		featureId,
+	).Scan(&count)
+	if err != nil {
+		return false, err
+	}
+
+	// check if at least one record exists
+	return count > 0, nil
+}
+
 func (br *BannerRepository) GetBanner(tagId int64, featureId int64) (models.BannerModel, error) {
 	var banner models.BannerModel
 
@@ -123,10 +155,9 @@ func (br *BannerRepository) CreateBanner(banner *models.BannerTagsModel) (int64,
 	var createdAt time.Time
 	err = tx.QueryRow(
 		context.Background(),
-		"INSERT INTO banners(content, feature_id, is_active) VALUES ($1, $2, $3) RETURNING id, created_at",
+		"INSERT INTO banners(content, feature_id) VALUES ($1, $2) RETURNING id, created_at",
 		banner.Content,
 		banner.FeatureId,
-		banner.IsActive,
 	).Scan(&bannerID, &createdAt)
 	if err != nil {
 		return 0, err

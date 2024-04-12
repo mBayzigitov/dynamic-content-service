@@ -56,7 +56,7 @@ func (bs *BannerService) GetBanner(tagId int64, featureId int64, useLastRevision
 	)
 	if err != nil {
 		bs.l.Info(err.Error())
-		return models.BannerModel{}, serverr.StorageError
+		return models.BannerModel{}, serverr.BannerNotFoundError
 	}
 
 	if banner.Id == 0 {
@@ -101,6 +101,17 @@ func (bs *BannerService) CreateBanner(banner *models.BannerTagsModel) (int64, *s
 
 	if !tagsExist {
 		return -1, serverr.NewInvalidRequestError("Все/некоторые tag_id не существуют")
+	}
+
+	duplicates, err := bs.br.CheckIfDuplicates(banner.FeatureId, banner.TagIds)
+	if err != nil {
+		bs.l.Error(err.Error())
+		return -1, serverr.StorageError
+	}
+
+	if duplicates {
+		bs.l.Info("duplicates error")
+		return -1, serverr.NewInvalidRequestError("Указаны дублирующиеся feature_id-tag_id")
 	}
 
 	createdId, err := bs.br.CreateBanner(banner)
