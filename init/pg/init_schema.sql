@@ -50,3 +50,21 @@ CREATE TABLE banner_version
     created_at TIMESTAMP DEFAULT now(),
     UNIQUE (version, banner_id)
 );
+
+-- deletes older banner_version records
+-- keeps previous 3 versions and the current one
+-- EXAMPLE: [1 2 3] add version 4 -> delete where id < 1 -> RESULT [1 2 3 4]
+-- add version 5 -> delete where id < 2 -> RESULT [2 3 4 5]
+CREATE OR REPLACE FUNCTION delete_old_banner_versions() RETURNS TRIGGER AS $$
+BEGIN
+    DELETE FROM banner_version bv
+    WHERE bv.version < NEW.version - 3;
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- trigger that calls the function before inserting a new record into banner_version
+CREATE TRIGGER before_insert_banner_version
+    BEFORE INSERT ON banner_version
+    FOR EACH ROW
+EXECUTE FUNCTION delete_old_banner_versions();

@@ -3,7 +3,11 @@ package repo
 import (
 	"context"
 	"encoding/json"
+	"errors"
+	"fmt"
+	"github.com/jackc/pgx/v5"
 	"github.com/jackc/pgx/v5/pgxpool"
+	"github.com/mBayzigitov/dynamic-content-service/internal/dto"
 	"github.com/mBayzigitov/dynamic-content-service/internal/models"
 	"github.com/mBayzigitov/dynamic-content-service/internal/util/serverr"
 	"go.uber.org/zap"
@@ -91,7 +95,7 @@ func (br *BannerRepository) CheckIfDuplicates(featureId int64, tagsIds []int64) 
 	return count > 0, nil
 }
 
-func (br *BannerRepository) GetBanner(tagId int64, featureId int64) (models.BannerModel, error) {
+func (br *BannerRepository) GetBannerByTagAndFeature(tagId int64, featureId int64) (models.BannerModel, error) {
 	var banner models.BannerModel
 
 	// query with JOIN to select banner based on tagId, featureId, is_active=true, and to_delete=false
@@ -198,8 +202,25 @@ func (br *BannerRepository) CreateBanner(banner *models.BannerTagsModel) (int64,
 }
 
 func (br *BannerRepository) DeleteBanner(bannerId int64) *serverr.ApiError {
-	// Perform the update operation to set to_delete=true
-	result, err := br.p.Exec(
+	// start a transaction
+	tx, err := br.p.Begin(context.Background())
+	if err != nil {
+		br.l.Fatal(err)
+		return serverr.StorageError
+	}
+	defer func() {
+		if pm := recover(); pm != nil {
+			tx.Rollback(context.Background())
+			panic(pm)
+		} else if err != nil {
+			tx.Rollback(context.Background())
+		} else {
+			err = tx.Commit(context.Background())
+		}
+	}()
+
+	// perform the update operation to set to_delete=true
+	result, err := tx.Exec(
 		context.Background(),
 		"UPDATE banners SET to_delete=true WHERE id = $1 AND is_active = true",
 		bannerId,
@@ -221,5 +242,255 @@ func (br *BannerRepository) DeleteBanner(bannerId int64) *serverr.ApiError {
 	return nil
 }
 
+func (br *BannerRepository) ChangeBannerByRequest(bannerId int64, chban dto.ChangeBannerDto) *serverr.ApiError {
+	// key idea is to get existing banner and use it as pattern for changes
+	// check if banner is present, if it is -> get banner pattern, change updated_at
+	bannerPattern, err := br.GetBannerById(bannerId)
+	if err != nil {
+		fmt.Println(err)
+		return err
+	}
 
+	bannerPattern.UpdatedAt = time.Now()
+	fmt.Println(*bannerPattern)
+
+	// if featureId NOT NULL -> check featureId, if exists -> change it in banner pattern
+	if chban.FeatureId != nil {
+		featExists, err := br.DoesFeatureExist(*chban.FeatureId)
+		if err != nil {
+			br.l.Error(err.Error())
+			return serverr.StorageError
+		}
+
+		if featExists {
+			bannerPattern.FeatureId = *chban.FeatureId
+		} else {
+			return serverr.NewInvalidRequestError("Указанный feature_id не существует")
+		}
+	}
+
+	// if tagIds NOT NULL -> check whether tagIds exist, if exists -> change it in banner pattern
+	if chban.TagIds != nil {
+		tagsExist, err := br.DoTagsExist(chban.TagIds)
+		if err != nil {
+			br.l.Error(err.Error())
+			return serverr.StorageError
+		}
+
+		if tagsExist {
+			bannerPattern.TagIds = chban.TagIds
+		} else {
+			return serverr.NewInvalidRequestError("Все/некоторые tag_id не существуют")
+		}
+	}
+
+	// if content NOT NULL -> assign value
+	if chban.Content != nil {
+		bannerPattern.Content = *chban.Content
+	}
+
+	// if is_active NOT NULL -> assign value, else keep value
+	if chban.IsActive != nil {
+		bannerPattern.IsActive = *chban.IsActive
+	}
+
+	// start transaction, commit through defer
+	tx, txerr := br.p.Begin(context.Background())
+	if txerr != nil {
+		return serverr.StorageError
+	}
+	defer func() {
+		if pm := recover(); pm != nil {
+			tx.Rollback(context.Background())
+			panic(pm)
+		} else if err != nil {
+			tx.Rollback(context.Background())
+		} else {
+			txerr = tx.Commit(context.Background())
+		}
+	}()
+
+	// create new version, get last revision param
+	tags, _ := json.Marshal(bannerPattern.TagIds)
+	fTags := strings.Trim(string(tags), "[]")
+	_, txerr = tx.Exec(
+		context.Background(),
+		"INSERT INTO banner_version(feature_id, banner_id, version, content, created_at, tags) VALUES ($1, $2, $3, $4, $5, $6)",
+		bannerPattern.FeatureId,
+		bannerId,
+		bannerPattern.LastRevision + 1,
+		bannerPattern.Content,
+		bannerPattern.UpdatedAt, // because version is created when main banner is updated
+		fTags,
+	)
+
+	// delete mapped tags, map new tags
+	err = br.RewriteBannerTags(bannerId, bannerPattern.TagIds)
+	if err != nil {
+		return err
+	}
+
+	// change the banner itself
+	bannerPattern.LastRevision = bannerPattern.LastRevision + 1
+	err = br.ChangeBanner(bannerId, bannerPattern)
+	if err != nil {
+		return err
+	}
+
+	br.l.Infof("Banner [id=%d] is updated successfully", bannerId)
+
+	return nil
+}
+
+func (br *BannerRepository) GetBannerById(bannerId int64) (*models.BannerTagsModel, *serverr.ApiError) {
+	// query to get banner details from the banners table
+	row := br.p.QueryRow(
+		context.Background(),
+		"SELECT feature_id, content, is_active, created_at, updated_at, last_revision, to_delete FROM banners WHERE id = $1",
+		bannerId,
+	)
+
+	// Initialize variables to store banner details
+	var banner models.BannerTagsModel
+
+	// Scan the banner details into the struct
+	err := row.Scan(
+		&banner.FeatureId,
+		&banner.Content,
+		&banner.IsActive,
+		&banner.CreatedAt,
+		&banner.UpdatedAt,
+		&banner.LastRevision,
+		&banner.ToDelete,
+	)
+	if err != nil {
+		if errors.Is(err, pgx.ErrNoRows) {
+			return nil, serverr.BannerNotFoundError
+		}
+		br.l.Error(err)
+		return nil, serverr.StorageError
+	}
+
+	// get tag IDs associated with the banner from the banners_tags table
+	rows, err := br.p.Query(
+		context.Background(),
+		`SELECT tag_id 
+			 FROM banners_tags
+			 WHERE banner_id = $1`,
+		bannerId,
+	)
+	if err != nil {
+		return nil, serverr.StorageError
+	}
+	defer rows.Close()
+
+	// iterate through the rows and append tag IDs to the slice
+	for rows.Next() {
+		var tagID int64
+		if err := rows.Scan(&tagID); err != nil {
+			br.l.Error(err)
+			return nil, serverr.StorageError
+		}
+		banner.TagIds = append(banner.TagIds, tagID)
+	}
+
+	// check for errors during row iteration
+	if err := rows.Err(); err != nil {
+		br.l.Error(err)
+		return nil, serverr.StorageError
+	}
+
+	return &banner, nil
+}
+
+func (br *BannerRepository) RewriteBannerTags(bannerId int64, tagIds []int64) *serverr.ApiError {
+	// start a transaction
+	tx, txerr := br.p.Begin(context.Background())
+	if txerr != nil {
+		br.l.Error(txerr)
+		return serverr.StorageError
+	}
+	defer func() {
+		if pm := recover(); pm != nil {
+			tx.Rollback(context.Background())
+			panic(pm)
+		} else if txerr != nil {
+			tx.Rollback(context.Background())
+		} else {
+			txerr = tx.Commit(context.Background())
+		}
+	}()
+
+	// delete existing banners_tags records for the given bannerId
+	_, txerr = tx.Exec(
+		context.Background(),
+		"DELETE FROM banners_tags WHERE banner_id = $1",
+		bannerId,
+	)
+	if txerr != nil {
+		br.l.Error(txerr)
+		return serverr.StorageError
+	}
+
+	// insert new banners_tags records
+	for _, tagId := range tagIds {
+		_, txerr = tx.Exec(
+			context.Background(),
+			"INSERT INTO banners_tags (banner_id, tag_id) VALUES ($1, $2)",
+			bannerId,
+			tagId,
+		)
+		if txerr != nil {
+			br.l.Error(txerr)
+			return serverr.StorageError
+		}
+	}
+
+	return nil
+}
+
+func (br *BannerRepository) ChangeBanner(bannerId int64, chban *models.BannerTagsModel) *serverr.ApiError {
+	// start a transaction
+	tx, txerr := br.p.Begin(context.Background())
+	if txerr != nil {
+		br.l.Error(txerr)
+		return serverr.StorageError
+	}
+	defer func() {
+		if pm := recover(); pm != nil {
+			tx.Rollback(context.Background())
+			panic(pm)
+		} else if txerr != nil {
+			tx.Rollback(context.Background())
+		} else {
+			txerr = tx.Commit(context.Background())
+		}
+	}()
+
+	// update the fields in the banners table
+	_, txerr = tx.Exec(
+		context.Background(),
+		`UPDATE banners 
+			 SET content = $1, 
+			     feature_id = $2, 
+			     is_active = $3, 
+			     updated_at = $4, 
+			     to_delete = $5,
+			     last_revision = $6
+			 WHERE id = $7`,
+		chban.Content,
+		chban.FeatureId,
+		chban.IsActive,
+		chban.UpdatedAt,
+		chban.ToDelete,
+		chban.LastRevision,
+		bannerId,
+	)
+	if txerr != nil {
+		br.l.Error(txerr)
+		return serverr.StorageError
+	}
+
+	return nil
+}
 

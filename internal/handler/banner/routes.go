@@ -13,8 +13,8 @@ import (
 )
 
 const (
-	TagIdParam = "tag_id"
-	FeatureIdParam = "feature_id"
+	TagIdParam           = "tag_id"
+	FeatureIdParam       = "feature_id"
 	UseLastRevisionParam = "use_last_revision"
 	BannerIdPathVariable = "bannerId"
 )
@@ -28,8 +28,8 @@ type BannerHandler struct {
 func NewHandler(service *service.BannerService) *BannerHandler {
 	loginst, _ := zap.NewDevelopment()
 	return &BannerHandler{
-		valid: validator.New(),
-		l:     loginst.Sugar(),
+		valid:   validator.New(),
+		l:       loginst.Sugar(),
 		service: service,
 	}
 }
@@ -38,6 +38,7 @@ func (bh *BannerHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/user_banner", bh.handleBannerGetting).Methods("GET")
 	router.HandleFunc("/banner", bh.handleBannerCreation).Methods("POST")
 	router.HandleFunc("/banner/{bannerId}", bh.handleBannerDeletion).Methods("DELETE")
+	router.HandleFunc("/banner/{bannerId}", bh.handleBannerChange).Methods("PATCH")
 }
 
 // -------- Helper functions --------
@@ -67,7 +68,7 @@ func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Requ
 	var tagId, featureId int64
 	var useLastRevision bool
 
-	tagId, err = strconv.ParseInt(ti, 10, 64);
+	tagId, err = strconv.ParseInt(ti, 10, 64)
 	if ti == "" || err != nil {
 		apierror := serverr.NewInvalidRequestError("Некорректное значение tag_id")
 		bh.l.Info(apierror.Error())
@@ -75,7 +76,7 @@ func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	featureId, err = strconv.ParseInt(fi, 10, 64);
+	featureId, err = strconv.ParseInt(fi, 10, 64)
 	if fi == "" || err != nil {
 		apierror := serverr.NewInvalidRequestError("Некорректное значение feature_id")
 		bh.l.Info(apierror.Error())
@@ -169,5 +170,50 @@ func (bh *BannerHandler) handleBannerDeletion(w http.ResponseWriter, r *http.Req
 		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
 	} else {
 		w.WriteHeader(204)
+	}
+}
+
+func (bh *BannerHandler) handleBannerChange(w http.ResponseWriter, r *http.Request) {
+	accessErr := bh.adminOnlyAccess(r)
+	if accessErr != nil {
+		http.Error(w, accessErr.JsonBody(), accessErr.HttpStatus)
+		return
+	}
+
+	qp := mux.Vars(r)
+	var bannerId int64
+	var err error
+
+	// check whether path param exists & has correct value
+	if bi, ok := qp[BannerIdPathVariable]; !ok {
+		apierr := serverr.NewInvalidRequestError("Отсутствует параметр 'bannerId'")
+		bh.l.Info(apierr)
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	} else {
+		bannerId, err = strconv.ParseInt(bi, 10, 64)
+		if err != nil {
+			apierr := serverr.NewInvalidRequestError("Неверный формат параметра 'bannerId'")
+			bh.l.Info(apierr)
+			http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+			return
+		}
+	}
+
+	var cb dto.ChangeBannerDto
+	dec := json.NewDecoder(r.Body)
+
+	if err := dec.Decode(&cb); err != nil {
+		apierr := serverr.InvalidRequestError
+		bh.l.Info(err)
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	// call service method and return response
+	if apierr := bh.service.ChangeBanner(bannerId, cb); apierr != nil {
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+	} else {
+		w.WriteHeader(200)
 	}
 }

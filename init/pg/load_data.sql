@@ -21,3 +21,6 @@ SELECT
 FROM banners b
     CROSS JOIN tags t
 ORDER BY b.id;
+
+insert into features (name)
+values ('Test feature 1'), ('Test feature 2');

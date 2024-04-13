@@ -20,33 +20,58 @@ type CreateBannerDto struct {
 	IsActive  bool            `json:"is_active"`
 }
 
+type ChangeBannerDto struct {
+	TagIds    []int64          `json:"tag_ids"`
+	FeatureId *int64           `json:"feature_id"`
+	Content   *json.RawMessage `json:"content"`
+	IsActive  *bool            `json:"is_active"`
+}
+
 type CreateBannerResponseDto struct {
-	BannerId    int64  `json:"banner_id"`
+	BannerId int64 `json:"banner_id"`
 }
 
 type GetBannerResponseDto struct {
-	Content     json.RawMessage `json:"content"`
-}
-
-type DeleteBannerResponseDto struct {
-	Description string `json:"description"`
+	Content json.RawMessage `json:"content"`
 }
 
 // ///////////////////// TYPES INIT METHODS ///////////////////////
 func NewGetBannerResponse(banner *models.BannerModel) *GetBannerResponseDto {
 	return &GetBannerResponseDto{
-		Content:     banner.Content,
+		Content: banner.Content,
 	}
 }
 
 func NewCreateBannerResponse(banner_id int64) *CreateBannerResponseDto {
 	return &CreateBannerResponseDto{
-		BannerId:    banner_id,
+		BannerId: banner_id,
 	}
 }
 
 // ///////////////////// HELPER FUNCTIONS ///////////////////////
+
 func (cbd *CreateBannerDto) Validate(v *validator.Validate) *serverr.ApiError {
+	if err := v.Struct(cbd); err != nil {
+		var verrs validator.ValidationErrors
+		errors.As(err, &verrs)
+
+		var errBody string
+		if verrs != nil && len(verrs) > 0 {
+			f := verrs[0]
+			errBody = "field '" + f.Field() + "' validation failed: '" + f.ActualTag() + "' is violated"
+		} else {
+			errBody = "validation error"
+		}
+
+		apierr := serverr.NewInvalidRequestError(errBody)
+
+		return apierr
+	}
+
+	return nil
+}
+
+func (cbd *ChangeBannerDto) Validate(v *validator.Validate) *serverr.ApiError {
 	if err := v.Struct(cbd); err != nil {
 		var verrs validator.ValidationErrors
 		errors.As(err, &verrs)

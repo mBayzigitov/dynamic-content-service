@@ -3,6 +3,7 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/mBayzigitov/dynamic-content-service/internal/dto"
 	"github.com/mBayzigitov/dynamic-content-service/internal/models"
 	"github.com/mBayzigitov/dynamic-content-service/internal/repo"
 	"github.com/mBayzigitov/dynamic-content-service/internal/util/serverr"
@@ -50,7 +51,7 @@ func (bs *BannerService) GetBanner(tagId int64, featureId int64, useLastRevision
 	}
 
 	// get from database
-	banner, err := bs.br.GetBanner(
+	banner, err := bs.br.GetBannerByTagAndFeature(
 		tagId,
 		featureId,
 	)
@@ -125,4 +126,8 @@ func (bs *BannerService) CreateBanner(banner *models.BannerTagsModel) (int64, *s
 
 func (bs *BannerService) DeleteBanner(bannerId int64) *serverr.ApiError {
 	return bs.br.DeleteBanner(bannerId)
+}
+
+func (bs *BannerService) ChangeBanner(bannerId int64, chban dto.ChangeBannerDto) *serverr.ApiError {
+	return bs.br.ChangeBannerByRequest(bannerId, chban)
 }
