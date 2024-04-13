@@ -38,7 +38,6 @@ func loadEnv() error {
 	envFiles, _ := os.ReadDir(envDir)
 
 	for _, env := range envFiles {
-		fmt.Println(envDir + env.Name())
 		err := godotenv.Load(envDir + env.Name())
 
 		if err != nil {

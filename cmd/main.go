@@ -9,6 +9,7 @@ import (
 	"github.com/redis/go-redis/v9"
 	"go.uber.org/zap"
 	"log"
+	"time"
 )
 
 var (
@@ -34,6 +35,8 @@ func main() {
 
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
+
+	time.Sleep(10 * time.Second) // wait until environment is load completely
 
 	dbURL := config.Postgres.GetDbUrl()
 	pool, err := pgxpool.New(context.Background(), dbURL)

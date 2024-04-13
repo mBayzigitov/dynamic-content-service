@@ -19,7 +19,7 @@ func TokenValidationMiddleware(next http.Handler) http.Handler {
 		// validate token
 		isAdmin, err := auth.ValidateToken(token)
 		if err != nil {
-			http.Error(w, serverr.UserUnauthorizedError.JsonBody(), serverr.UserUnauthorizedError.HttpStatus)
+			http.Error(w, err.JsonBody(), err.HttpStatus)
 			return
 		}
 

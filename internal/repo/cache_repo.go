@@ -21,7 +21,7 @@ func NewCacheRepo(client *redis.Client) *CacheRepo {
 
 func (cr *CacheRepo) Set(key string, content string, ttl time.Duration) error {
 	if err := cr.redcli.Set(cr.c, key, content, ttl).Err(); err != nil {
-		return errors.New("redis: error while setting content")
+		return err
 	}
 
 	return nil

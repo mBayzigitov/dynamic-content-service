@@ -17,7 +17,7 @@ Imitates the authentication handler
 
 Returns true if token belongs to administrator, otherwise returns false
 */
-func ValidateToken(token string) (bool, error) {
+func ValidateToken(token string) (bool, *serverr.ApiError) {
 
 	prefix := token[:3]
 	switch prefix {

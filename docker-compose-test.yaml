@@ -1,16 +1,6 @@
 version: "3.9"
 
 services:
-  app:
-    build:
-      context: .
-    command: ./main
-    ports:
-      - "8080:8080"
-    depends_on:
-      - postgres
-      - redis
-
   postgres:
     image: postgres:latest
     expose:
@@ -21,8 +11,7 @@ services:
       - POSTGRES_USER=${PG_USER}
       - POSTGRES_PASSWORD=${PG_PASSWORD}
     volumes:
-      - ./init/main-db/:/docker-entrypoint-initdb.d/
-      - dcdb-data:/var/lib/postgresql/data
+      - ./init/test/:/docker-entrypoint-initdb.d/
     ports:
       - "5433:5432"
     restart: on-failure
@@ -34,13 +23,7 @@ services:
     restart: always
     ports:
       - "6379:6379"
-    volumes:
-      - rds-data:/data
     environment:
       - REDIS_PASSWORD=${REDIS_PASSWORD}
       - REDIS_PORT=${REDIS_PORT}
       - REDIS_DATABASES=1
-
-volumes:
-  dcdb-data:
-  rds-data:

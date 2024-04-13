@@ -69,6 +69,6 @@ func NewInvalidRequestError(errm string) *ApiError {
 	}
 }
 
-func (e *ApiError) Error() string {
-	return e.ErrType + ": " + e.Description
+func (apierr *ApiError) Error() string {
+	return apierr.ErrType
 }
