@@ -36,7 +36,7 @@ func main() {
 	logger, _ := zap.NewDevelopment()
 	defer logger.Sync()
 
-	time.Sleep(10 * time.Second) // wait until environment is load completely
+	time.Sleep(5 * time.Second) // wait until environment is load completely
 
 	dbURL := config.Postgres.GetDbUrl()
 	pool, err := pgxpool.New(context.Background(), dbURL)

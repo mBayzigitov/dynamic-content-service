@@ -525,6 +525,7 @@ func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, lim
 			   b.feature_id,
 			   b.content,
 			   b.is_active,
+			   b.to_delete,
 			   b.created_at,
 			   b.updated_at
 		FROM banners b
@@ -561,6 +562,7 @@ func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, lim
 			&banner.FeatureId,
 			&banner.Content,
 			&banner.IsActive,
+			&banner.ToDelete,
 			&banner.CreatedAt,
 			&banner.UpdatedAt,
 		)
@@ -570,24 +572,26 @@ func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, lim
 
 		if curModel.Id == 0 {
 			curModel = models.BannerTagsModel{
-				Id:           banner.Id,
-				FeatureId:    banner.FeatureId,
-				Content:      banner.Content,
-				IsActive:     banner.IsActive,
-				CreatedAt:    banner.CreatedAt,
-				UpdatedAt:    banner.UpdatedAt,
+				Id:        banner.Id,
+				FeatureId: banner.FeatureId,
+				Content:   banner.Content,
+				IsActive:  banner.IsActive,
+				ToDelete:  banner.ToDelete,
+				CreatedAt: banner.CreatedAt,
+				UpdatedAt: banner.UpdatedAt,
 			}
 			curModel.TagIds = append(curModel.TagIds, banner.TagId)
 		} else if banner.Id != curModel.Id {
 			banners = append(banners, curModel)
 
 			curModel = models.BannerTagsModel{
-				Id:           banner.Id,
-				FeatureId:    banner.FeatureId,
-				Content:      banner.Content,
-				IsActive:     banner.IsActive,
-				CreatedAt:    banner.CreatedAt,
-				UpdatedAt:    banner.UpdatedAt,
+				Id:        banner.Id,
+				FeatureId: banner.FeatureId,
+				Content:   banner.Content,
+				IsActive:  banner.IsActive,
+				ToDelete:  banner.ToDelete,
+				CreatedAt: banner.CreatedAt,
+				UpdatedAt: banner.UpdatedAt,
 			}
 			curModel.TagIds = append(curModel.TagIds, banner.TagId)
 		} else {

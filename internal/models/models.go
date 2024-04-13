@@ -13,6 +13,7 @@ type BannerModel struct {
 	IsActive  bool
 	CreatedAt time.Time
 	UpdatedAt time.Time
+	ToDelete  bool
 }
 
 type BannerTagsModel struct {

@@ -42,6 +42,7 @@ type FilterBannersResponseDto struct {
 	FeatureId int64           `json:"feature_id"`
 	Content   json.RawMessage `json:"content"`
 	IsActive  bool            `json:"is_active"`
+	ToDelete  bool            `json:"to_delete"`
 	CreatedAt time.Time       `json:"created_at"`
 	UpdatedAt time.Time       `json:"updated_at"`
 }
@@ -66,6 +67,7 @@ func NewFilterBannersResponseDto(b models.BannerTagsModel) FilterBannersResponse
 		FeatureId: b.FeatureId,
 		Content:   b.Content,
 		IsActive:  b.IsActive,
+		ToDelete:  b.ToDelete,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
 	}
