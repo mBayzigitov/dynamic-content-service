@@ -16,6 +16,8 @@ const (
 	TagIdParam           = "tag_id"
 	FeatureIdParam       = "feature_id"
 	UseLastRevisionParam = "use_last_revision"
+	LimitParam = "limit"
+	OffsetParam = "offset"
 	BannerIdPathVariable = "bannerId"
 )
 
@@ -36,6 +38,7 @@ func NewHandler(service *service.BannerService) *BannerHandler {
 
 func (bh *BannerHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/user_banner", bh.handleBannerGetting).Methods("GET")
+	router.HandleFunc("/banner", bh.handleBannerFilter).Methods("GET")
 	router.HandleFunc("/banner", bh.handleBannerCreation).Methods("POST")
 	router.HandleFunc("/banner/{bannerId}", bh.handleBannerDeletion).Methods("DELETE")
 	router.HandleFunc("/banner/{bannerId}", bh.handleBannerChange).Methods("PATCH")
@@ -216,4 +219,79 @@ func (bh *BannerHandler) handleBannerChange(w http.ResponseWriter, r *http.Reque
 	} else {
 		w.WriteHeader(200)
 	}
+}
+
+func (bh *BannerHandler) handleBannerFilter(w http.ResponseWriter, r *http.Request) {
+	accessErr := bh.adminOnlyAccess(r)
+	if accessErr != nil {
+		http.Error(w, accessErr.JsonBody(), accessErr.HttpStatus)
+		return
+	}
+
+	// parse params
+	ti := r.URL.Query().Get(TagIdParam)
+	fi := r.URL.Query().Get(FeatureIdParam)
+	lim := r.URL.Query().Get(LimitParam)
+	off := r.URL.Query().Get(OffsetParam)
+
+	var apierr *serverr.ApiError
+
+	// validate values
+	var tagId, featureId, limit, offset int64
+	offset, apierr = bh.parsePosInt(off, "offset")
+	if apierr != nil {
+		bh.l.Info(apierr.Error())
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	limit, apierr = bh.parsePosInt(lim, "limit")
+	if apierr != nil {
+		bh.l.Info(apierr.Error())
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	featureId, apierr = bh.parsePosInt(fi, "featureId")
+	if apierr != nil {
+		bh.l.Info(apierr.Error())
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	tagId, apierr = bh.parsePosInt(ti, "tagId")
+	if apierr != nil {
+		bh.l.Info(apierr.Error())
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	if tagId == 0 && featureId == 0 {
+		apierr = serverr.NewInvalidRequestError("'feature_id' и 'tag_id' не установлены")
+		bh.l.Info(apierr.Error())
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	// call service method and return response
+	if blist, apierr := bh.service.GetBannersByFilter(featureId, tagId, limit, offset); apierr != nil {
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+	} else {
+		w.WriteHeader(200)
+		w.Write([]byte(dto.JsonBody(blist)))
+	}
+}
+
+func (bh *BannerHandler) parsePosInt(tg string, pname string) (int64, *serverr.ApiError) {
+	if tg == "" {
+		return 0, nil
+	}
+
+	val, err := strconv.ParseInt(tg, 10, 64)
+	if err != nil || val < 0 {
+		apierror := serverr.NewInvalidRequestError("Некорректное значение '" + pname + "'")
+		return 0, apierror
+	}
+
+	return val, nil
 }

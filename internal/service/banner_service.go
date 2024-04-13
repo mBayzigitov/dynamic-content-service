@@ -131,3 +131,18 @@ func (bs *BannerService) DeleteBanner(bannerId int64) *serverr.ApiError {
 func (bs *BannerService) ChangeBanner(bannerId int64, chban dto.ChangeBannerDto) *serverr.ApiError {
 	return bs.br.ChangeBannerByRequest(bannerId, chban)
 }
+
+func (bs *BannerService) GetBannersByFilter(featureId int64, tagId int64, limit int64, offset int64) ([]dto.FilterBannersResponseDto, *serverr.ApiError) {
+	list, err := bs.br.GetBannersByFilter(featureId, tagId, limit, offset)
+	if err != nil {
+		bs.l.Info(err)
+		return nil, err
+	}
+
+	resp := make([]dto.FilterBannersResponseDto, len(list))
+	for i, v := range list {
+		resp[i] = dto.NewFilterBannersResponseDto(v)
+	}
+
+	return resp, nil
+}

@@ -16,6 +16,7 @@ type BannerModel struct {
 }
 
 type BannerTagsModel struct {
+	Id           int64
 	TagIds       []int64
 	FeatureId    int64
 	Content      json.RawMessage

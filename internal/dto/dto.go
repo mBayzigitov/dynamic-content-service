@@ -6,6 +6,7 @@ import (
 	"github.com/go-playground/validator/v10"
 	"github.com/mBayzigitov/dynamic-content-service/internal/models"
 	"github.com/mBayzigitov/dynamic-content-service/internal/util/serverr"
+	"time"
 )
 
 // ///////////////////// TYPES ///////////////////////
@@ -35,6 +36,16 @@ type GetBannerResponseDto struct {
 	Content json.RawMessage `json:"content"`
 }
 
+type FilterBannersResponseDto struct {
+	BannerId  int64           `json:"banner_id"`
+	TagIds    []int64         `json:"tag_ids"`
+	FeatureId int64           `json:"feature_id"`
+	Content   json.RawMessage `json:"content"`
+	IsActive  bool            `json:"is_active"`
+	CreatedAt time.Time       `json:"created_at"`
+	UpdatedAt time.Time       `json:"updated_at"`
+}
+
 // ///////////////////// TYPES INIT METHODS ///////////////////////
 func NewGetBannerResponse(banner *models.BannerModel) *GetBannerResponseDto {
 	return &GetBannerResponseDto{
@@ -45,6 +56,18 @@ func NewGetBannerResponse(banner *models.BannerModel) *GetBannerResponseDto {
 func NewCreateBannerResponse(banner_id int64) *CreateBannerResponseDto {
 	return &CreateBannerResponseDto{
 		BannerId: banner_id,
+	}
+}
+
+func NewFilterBannersResponseDto(b models.BannerTagsModel) FilterBannersResponseDto {
+	return FilterBannersResponseDto{
+		BannerId:  b.Id,
+		TagIds:    b.TagIds,
+		FeatureId: b.FeatureId,
+		Content:   b.Content,
+		IsActive:  b.IsActive,
+		CreatedAt: b.CreatedAt,
+		UpdatedAt: b.UpdatedAt,
 	}
 }
 

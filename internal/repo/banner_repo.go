@@ -318,7 +318,7 @@ func (br *BannerRepository) ChangeBannerByRequest(bannerId int64, chban dto.Chan
 		"INSERT INTO banner_version(feature_id, banner_id, version, content, created_at, tags) VALUES ($1, $2, $3, $4, $5, $6)",
 		bannerPattern.FeatureId,
 		bannerId,
-		bannerPattern.LastRevision + 1,
+		bannerPattern.LastRevision+1,
 		bannerPattern.Content,
 		bannerPattern.UpdatedAt, // because version is created when main banner is updated
 		fTags,
@@ -494,3 +494,108 @@ func (br *BannerRepository) ChangeBanner(bannerId int64, chban *models.BannerTag
 	return nil
 }
 
+func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, limit int64, offset int64) ([]models.BannerTagsModel, *serverr.ApiError) {
+	// construct query logic
+	var featureQp, andQp, tagIdQp, limitQp, offsetQp string
+
+	both := featureId != 0 && tagId != 0
+
+	if featureId != 0 {
+		featureQp = fmt.Sprintf("b.feature_id = %d", featureId)
+	}
+
+	if both {
+		andQp = "and"
+	}
+
+	if tagId != 0 {
+		tagIdQp = fmt.Sprintf("bt.tag_id = %d", tagId)
+	}
+
+	if limit != 0 {
+		limitQp = fmt.Sprintf("LIMIT %d", limit)
+	}
+
+	offsetQp = fmt.Sprintf("OFFSET %d", offset)
+
+	query := fmt.Sprintf(
+		`
+		SELECT b.id,
+			   bt.tag_id,
+			   b.feature_id,
+			   b.content,
+			   b.is_active,
+			   b.created_at,
+			   b.updated_at
+		FROM banners b
+		JOIN banners_tags bt on b.id = bt.banner_id
+		WHERE
+		%s
+		%s
+		%s
+		%s
+		%s
+		`,
+		featureQp,
+		andQp,
+		tagIdQp,
+		limitQp,
+		offsetQp,
+	)
+
+	// exec query
+	rows, err := br.p.Query(context.Background(), query)
+	if err != nil {
+		br.l.Error(err)
+		return nil, serverr.StorageError
+	}
+	defer rows.Close()
+
+	var banners []models.BannerTagsModel
+	var curModel models.BannerTagsModel
+	for rows.Next() {
+		var banner models.BannerModel
+		err := rows.Scan(
+			&banner.Id,
+			&banner.TagId,
+			&banner.FeatureId,
+			&banner.Content,
+			&banner.IsActive,
+			&banner.CreatedAt,
+			&banner.UpdatedAt,
+		)
+		if err != nil {
+			return nil, serverr.StorageError
+		}
+
+		if curModel.Id == 0 {
+			curModel = models.BannerTagsModel{
+				Id:           banner.Id,
+				FeatureId:    banner.FeatureId,
+				Content:      banner.Content,
+				IsActive:     banner.IsActive,
+				CreatedAt:    banner.CreatedAt,
+				UpdatedAt:    banner.UpdatedAt,
+			}
+			curModel.TagIds = append(curModel.TagIds, banner.TagId)
+		} else if banner.Id != curModel.Id {
+			banners = append(banners, curModel)
+
+			curModel = models.BannerTagsModel{
+				Id:           banner.Id,
+				FeatureId:    banner.FeatureId,
+				Content:      banner.Content,
+				IsActive:     banner.IsActive,
+				CreatedAt:    banner.CreatedAt,
+				UpdatedAt:    banner.UpdatedAt,
+			}
+			curModel.TagIds = append(curModel.TagIds, banner.TagId)
+		} else {
+			curModel.TagIds = append(curModel.TagIds, banner.TagId)
+		}
+	}
+
+	banners = append(banners, curModel)
+
+	return banners, nil
+}
