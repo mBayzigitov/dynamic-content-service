@@ -35,4 +35,4 @@ down-v:
 
 .PHONY: stop
 stop:
-	docker-compose -f docker-compose-test.yaml stop
+	docker-compose -f docker-compose.yaml stop
