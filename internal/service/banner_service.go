@@ -173,3 +173,7 @@ func (bs *BannerService) DeleteByFeatureOrTagId(featureId int64, tagId int64) *s
 func (bs *BannerService) GetVersions(bannerId int64) ([]models.BannerVersion, *serverr.ApiError) {
 	return bs.br.GetBannerVersions(bannerId)
 }
+
+func (bs *BannerService) SetVersion(bannerId int64, versionId int64) *serverr.ApiError {
+	return bs.br.SetBannerVersion(bannerId, versionId)
+}

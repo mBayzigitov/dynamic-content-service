@@ -9,6 +9,7 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 	"github.com/mBayzigitov/dynamic-content-service/internal/dto"
 	"github.com/mBayzigitov/dynamic-content-service/internal/models"
+	"github.com/mBayzigitov/dynamic-content-service/internal/util"
 	"github.com/mBayzigitov/dynamic-content-service/internal/util/serverr"
 	"go.uber.org/zap"
 	"strconv"
@@ -495,6 +496,7 @@ func (br *BannerRepository) ChangeBanner(bannerId int64, chban *models.BannerTag
 			tx.Rollback(context.Background())
 			panic(pm)
 		} else if txerr != nil {
+			br.l.Error(txerr)
 			tx.Rollback(context.Background())
 		} else {
 			txerr = tx.Commit(context.Background())
@@ -743,4 +745,121 @@ func (br *BannerRepository) GetBannerVersions(bannerId int64) ([]models.BannerVe
 	}
 
 	return versions, nil
+}
+
+func (br *BannerRepository) SetBannerVersion(bannerId int64, versionId int64) *serverr.ApiError {
+	fmt.Println(bannerId, versionId)
+
+	// check if the specified version of the banner exists
+	query := `
+        SELECT bv.banner_id,
+               bv.version,
+               bv.feature_id,
+               bv.tags,
+               bv.content,
+               bv.created_at,
+               b.is_active,
+               b.to_delete,
+               b.id,
+               b.created_at
+        FROM banner_version bv
+        	 JOIN banners b on bv.banner_id = b.id
+        WHERE banner_id = $1 AND version = $2
+    `
+	var version models.BannerVersion
+	var chban models.BannerTagsModel
+	err := br.p.QueryRow(
+		context.Background(),
+		query,
+		bannerId,
+		versionId).Scan(
+			&version.BannerId,
+			&version.Version,
+			&version.FeatureId,
+			&version.Tags,
+			&version.Content,
+			&version.CreatedAt,
+			&chban.IsActive,
+			&chban.ToDelete,
+			&chban.Id,
+			&chban.CreatedAt)
+	if err != nil {
+		br.l.Error(err)
+		return serverr.BannerNotFoundError
+	}
+
+	tx, txerr := br.p.Begin(context.Background())
+	if txerr != nil {
+		br.l.Error(txerr)
+		return serverr.StorageError
+	}
+	defer func() {
+		if pm := recover(); pm != nil {
+			tx.Rollback(context.Background())
+			panic(pm)
+		} else if txerr != nil {
+			br.l.Error(txerr)
+			tx.Rollback(context.Background())
+		} else {
+			txerr = tx.Commit(context.Background())
+		}
+	}()
+
+	// retrieve a slice from string of tagIds
+	chban.TagIds, err = util.StringToIntSlice(version.Tags)
+
+	chban.Content = version.Content
+	chban.FeatureId = version.FeatureId
+
+	// change updated_at because technically its updated now
+	chban.UpdatedAt = time.Now()
+	chban.LastRevision = versionId
+
+	apierr := br.ChangeBanner(bannerId, &chban)
+	if apierr != nil {
+		return serverr.StorageError
+	}
+
+	apierr = br.RewriteBannerTags(bannerId, chban.TagIds)
+	if apierr != nil {
+		return serverr.StorageError
+	}
+
+	apierr = br.DeleteVersionsGreaterThan(versionId)
+	if apierr != nil {
+		return apierr
+	}
+
+	return nil
+}
+
+func (br *BannerRepository) DeleteVersionsGreaterThan(versionId int64) *serverr.ApiError {
+	tx, txerr := br.p.Begin(context.Background())
+	if txerr != nil {
+		br.l.Error(txerr)
+		return serverr.StorageError
+	}
+	defer func() {
+		if pm := recover(); pm != nil {
+			tx.Rollback(context.Background())
+			panic(pm)
+		} else if txerr != nil {
+			br.l.Error(txerr)
+			tx.Rollback(context.Background())
+		} else {
+			txerr = tx.Commit(context.Background())
+		}
+	}()
+
+	sqlStatement := `
+        DELETE FROM banner_version
+        WHERE version > $1
+    `
+
+	_, txerr = tx.Exec(context.Background(), sqlStatement, versionId)
+	if txerr != nil {
+		return serverr.StorageError
+	}
+
+	return nil
 }

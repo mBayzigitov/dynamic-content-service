@@ -19,6 +19,7 @@ const (
 	LimitParam           = "limit"
 	OffsetParam          = "offset"
 	BannerIdPathVariable = "bannerId"
+	VersionIdPathVariable = "versionId"
 )
 
 type BannerHandler struct {
@@ -45,7 +46,8 @@ func (bh *BannerHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/banner", bh.handleDeleteByFeatureOrTag).Methods("DELETE")
 	router.HandleFunc("/banner/{bannerId}", bh.handleBannerChange).Methods("PATCH")
 
-	router.HandleFunc("/banner/ver/{bannerId}", bh.handleGetVersions).Methods("GET")
+	router.HandleFunc("/banner/{bannerId}/ver", bh.handleGetVersions).Methods("GET")
+	router.HandleFunc("/banner/{bannerId}/ver/{versionId}", bh.handleSetVersion).Methods("PATCH")
 }
 
 // -------- Helper functions --------
@@ -376,5 +378,55 @@ func (bh *BannerHandler) handleGetVersions(w http.ResponseWriter, r *http.Reques
 
 		w.WriteHeader(200)
 		w.Write([]byte(dto.JsonBody(resp)))
+	}
+}
+
+func (bh *BannerHandler) handleSetVersion(w http.ResponseWriter, r *http.Request) {
+	accessErr := bh.adminOnlyAccess(r)
+	if accessErr != nil {
+		http.Error(w, accessErr.JsonBody(), accessErr.HttpStatus)
+		return
+	}
+
+	qp := mux.Vars(r)
+	var bannerId, versionId int64
+	var err error
+
+	// check whether path param exists & has correct value
+	if bi, ok := qp[BannerIdPathVariable]; !ok {
+		apierr := serverr.NewInvalidRequestError("Отсутствует параметр 'bannerId'")
+		bh.l.Info(apierr)
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	} else {
+		bannerId, err = strconv.ParseInt(bi, 10, 64)
+		if err != nil {
+			apierr := serverr.NewInvalidRequestError("Неверный формат параметра 'bannerId'")
+			bh.l.Info(apierr)
+			http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+			return
+		}
+	}
+
+	if bi, ok := qp[VersionIdPathVariable]; !ok {
+		apierr := serverr.NewInvalidRequestError("Отсутствует параметр 'versionId'")
+		bh.l.Info(apierr)
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	} else {
+		versionId, err = strconv.ParseInt(bi, 10, 64)
+		if err != nil {
+			apierr := serverr.NewInvalidRequestError("Неверный формат параметра 'versionId'")
+			bh.l.Info(apierr)
+			http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+			return
+		}
+	}
+
+	// call service method and return response
+	if apierr := bh.service.SetVersion(bannerId, versionId); apierr != nil {
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+	} else {
+		w.WriteHeader(200)
 	}
 }
