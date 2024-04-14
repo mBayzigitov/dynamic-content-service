@@ -532,7 +532,7 @@ func (br *BannerRepository) ChangeBanner(bannerId int64, chban *models.BannerTag
 
 func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, limit int64, offset int64) ([]models.BannerTagsModel, *serverr.ApiError) {
 	// construct query logic
-	var featureQp, andQp, tagIdQp, limitQp, offsetQp string
+	var featureQp, andQp, tagIdQp string
 
 	both := featureId != 0 && tagId != 0
 
@@ -545,14 +545,14 @@ func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, lim
 	}
 
 	if tagId != 0 {
-		tagIdQp = fmt.Sprintf("bt.tag_id = %d", tagId)
+		tagIdQp = fmt.Sprintf(
+			`b.id in (
+        		select btt.banner_id
+				from banners_tags btt
+        		where btt.tag_id = %d
+      		)`,
+			tagId)
 	}
-
-	if limit != 0 {
-		limitQp = fmt.Sprintf("LIMIT %d", limit)
-	}
-
-	offsetQp = fmt.Sprintf("OFFSET %d", offset)
 
 	query := fmt.Sprintf(
 		`
@@ -570,14 +570,10 @@ func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, lim
 		%s
 		%s
 		%s
-		%s
-		%s
 		`,
 		featureQp,
 		andQp,
 		tagIdQp,
-		limitQp,
-		offsetQp,
 	)
 
 	// exec query
@@ -639,7 +635,30 @@ func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, lim
 		banners = append(banners, curModel)
 	}
 
-	return banners, nil
+	// create boundaries
+	var start, end int64
+	blength := int64(len(banners))
+
+	// check if offset is greater than the length of the slice, set it to 0
+	if offset >= blength {
+		start = blength
+	} else {
+		start = offset
+	}
+
+	// extract the desired elements from the slice
+	result := banners[start:]
+
+	// check if limit is 0, set it to the length of the slice
+	if limit == 0 || limit > int64(len(result)) {
+		end = int64(len(result))
+	} else {
+		end = limit
+	}
+
+	result = result[:end]
+
+	return result, nil
 }
 
 func (br *BannerRepository) DeleteBannersByTagOrFeatureId(featureId int64, tagId int64) *serverr.ApiError {
