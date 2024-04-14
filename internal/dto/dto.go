@@ -47,6 +47,10 @@ type FilterBannersResponseDto struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
+type GetVersionsResponseDto struct {
+	Versions []models.BannerVersion `json:"versions"`
+}
+
 // ///////////////////// TYPES INIT METHODS ///////////////////////
 func NewGetBannerResponse(banner *models.BannerModel) *GetBannerResponseDto {
 	return &GetBannerResponseDto{
@@ -70,6 +74,12 @@ func NewFilterBannersResponseDto(b models.BannerTagsModel) FilterBannersResponse
 		ToDelete:  b.ToDelete,
 		CreatedAt: b.CreatedAt,
 		UpdatedAt: b.UpdatedAt,
+	}
+}
+
+func NewBannerVersionsResponse(v []models.BannerVersion) *GetVersionsResponseDto {
+	return &GetVersionsResponseDto{
+		Versions: v,
 	}
 }
 

@@ -27,3 +27,12 @@ type BannerTagsModel struct {
 	LastRevision int64
 	ToDelete     bool
 }
+
+type BannerVersion struct {
+	BannerId  string          `json:"banner_id"`
+	Version   int64           `json:"version"`
+	FeatureId int64           `json:"feature_id"`
+	Tags      string          `json:"tags"`
+	Content   json.RawMessage `json:"content"`
+	CreatedAt time.Time       `json:"created_at"`
+}

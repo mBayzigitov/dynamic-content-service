@@ -38,11 +38,14 @@ func NewHandler(service *service.BannerService) *BannerHandler {
 
 func (bh *BannerHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/user_banner", bh.handleBannerGetting).Methods("GET")
+
 	router.HandleFunc("/banner", bh.handleBannerFilter).Methods("GET")
 	router.HandleFunc("/banner", bh.handleBannerCreation).Methods("POST")
 	router.HandleFunc("/banner/{bannerId}", bh.handleBannerDeletion).Methods("DELETE")
 	router.HandleFunc("/banner", bh.handleDeleteByFeatureOrTag).Methods("DELETE")
 	router.HandleFunc("/banner/{bannerId}", bh.handleBannerChange).Methods("PATCH")
+
+	router.HandleFunc("/banner/ver/{bannerId}", bh.handleGetVersions).Methods("GET")
 }
 
 // -------- Helper functions --------
@@ -335,5 +338,43 @@ func (bh *BannerHandler) handleDeleteByFeatureOrTag(w http.ResponseWriter, r *ht
 		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
 	} else {
 		w.WriteHeader(200)
+	}
+}
+
+func (bh *BannerHandler) handleGetVersions(w http.ResponseWriter, r *http.Request) {
+	accessErr := bh.adminOnlyAccess(r)
+	if accessErr != nil {
+		http.Error(w, accessErr.JsonBody(), accessErr.HttpStatus)
+		return
+	}
+
+	qp := mux.Vars(r)
+	var bannerId int64
+	var err error
+
+	// check whether path param exists & has correct value
+	if bi, ok := qp[BannerIdPathVariable]; !ok {
+		apierr := serverr.NewInvalidRequestError("Отсутствует параметр 'bannerId'")
+		bh.l.Info(apierr)
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	} else {
+		bannerId, err = strconv.ParseInt(bi, 10, 64)
+		if err != nil {
+			apierr := serverr.NewInvalidRequestError("Неверный формат параметра 'bannerId'")
+			bh.l.Info(apierr)
+			http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+			return
+		}
+	}
+
+	// call service method and return response
+	if bv, apierr := bh.service.GetVersions(bannerId); apierr != nil {
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+	} else {
+		resp := dto.NewBannerVersionsResponse(bv)
+
+		w.WriteHeader(200)
+		w.Write([]byte(dto.JsonBody(resp)))
 	}
 }

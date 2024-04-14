@@ -169,3 +169,7 @@ func (bs *BannerService) GetBannersByFilter(featureId int64, tagId int64, limit 
 func (bs *BannerService) DeleteByFeatureOrTagId(featureId int64, tagId int64) *serverr.ApiError {
 	return bs.br.DeleteBannersByTagOrFeatureId(featureId, tagId)
 }
+
+func (bs *BannerService) GetVersions(bannerId int64) ([]models.BannerVersion, *serverr.ApiError) {
+	return bs.br.GetBannerVersions(bannerId)
+}

@@ -304,7 +304,7 @@ func (br *BannerRepository) ChangeBannerByRequest(bannerId int64, chban dto.Chan
 	}
 
 	// if tagIds NOT NULL -> check whether tagIds exist, if exists -> change it in banner pattern
-	if chban.TagIds != nil {
+	if len(chban.TagIds) != 0 {
 		tagsExist, err := br.DoTagsExist(chban.TagIds)
 		if err != nil {
 			br.l.Error(err.Error())
@@ -708,4 +708,39 @@ func (br *BannerRepository) DeleteBannersByTagOrFeatureId(featureId int64, tagId
 	}
 
 	return nil
+}
+
+func (br *BannerRepository) GetBannerVersions(bannerId int64) ([]models.BannerVersion, *serverr.ApiError) {
+	rows, err := br.p.Query(
+		context.Background(),
+		`SELECT bv.banner_id,
+       				bv.version,
+       				bv.feature_id,
+       				bv.tags,
+       				bv.content,
+       				bv.created_at
+			 FROM banner_version bv
+			 WHERE banner_id = $1`,
+		bannerId,
+	)
+	if err != nil {
+		return nil, serverr.StorageError
+	}
+	defer rows.Close()
+
+	var versions []models.BannerVersion
+	for rows.Next() {
+		var c models.BannerVersion
+		if err := rows.Scan(&c.BannerId, &c.Version, &c.FeatureId, &c.Tags, &c.Content, &c.CreatedAt); err != nil {
+			br.l.Error(err)
+			return nil, serverr.StorageError
+		}
+		versions = append(versions, c)
+	}
+
+	if len(versions) == 0 {
+		return []models.BannerVersion{}, serverr.BannerNotFoundError
+	}
+
+	return versions, nil
 }
