@@ -97,7 +97,6 @@ func (br *BannerRepository) DeleteMarkedBanners() error {
 	return nil
 }
 
-
 // CheckIfDuplicates
 // Method that checks if a bunch of key (banner_id-feature_id-tag_id) already
 // exists to satisfy the condition of unambigious definition
@@ -639,4 +638,74 @@ func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, lim
 	}
 
 	return banners, nil
+}
+
+func (br *BannerRepository) DeleteBannersByTagOrFeatureId(featureId int64, tagId int64) *serverr.ApiError {
+	tx, txerr := br.p.Begin(context.Background())
+	if txerr != nil {
+		br.l.Error(txerr)
+		return serverr.StorageError
+	}
+	defer func() {
+		if pm := recover(); pm != nil {
+			tx.Rollback(context.Background())
+			panic(pm)
+		} else if txerr != nil {
+			br.l.Error(txerr)
+			tx.Rollback(context.Background())
+		} else {
+			txerr = tx.Commit(context.Background())
+		}
+	}()
+
+	var query string
+	var param int64
+	if featureId != 0 {
+		featureExists, err := br.DoesFeatureExist(featureId)
+		if err != nil {
+			br.l.Error(err)
+			return serverr.StorageError
+		}
+
+		if !featureExists {
+			return serverr.NewInvalidRequestError("Указанный feature_id не существует")
+		}
+
+		param = featureId
+		query = `
+			UPDATE banners
+        	SET to_delete = true
+        	WHERE feature_id = $1
+        `
+		defer br.l.Infof("Banners with feature_id=%d were marked as deleted", param)
+	} else {
+		tagsExist, err := br.DoTagsExist([]int64{tagId})
+		if err != nil {
+			br.l.Error(err.Error())
+			return serverr.StorageError
+		}
+
+		if !tagsExist {
+			return serverr.NewInvalidRequestError("Указанный tag_id не существует")
+		}
+
+		param = tagId
+		query = `
+			UPDATE banners
+        	SET to_delete = true
+        	WHERE id IN (
+					SELECT banner_id
+					FROM banners_tags
+					WHERE tag_id = $1
+        		)`
+		defer br.l.Infof("Banners with tag_id=%d were marked as deleted", param)
+	}
+
+	_, txerr = tx.Exec(context.Background(), query, param)
+	if txerr != nil {
+		br.l.Error(txerr)
+		return serverr.StorageError
+	}
+
+	return nil
 }

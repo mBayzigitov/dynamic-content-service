@@ -165,3 +165,7 @@ func (bs *BannerService) GetBannersByFilter(featureId int64, tagId int64, limit 
 
 	return resp, nil
 }
+
+func (bs *BannerService) DeleteByFeatureOrTagId(featureId int64, tagId int64) *serverr.ApiError {
+	return bs.br.DeleteBannersByTagOrFeatureId(featureId, tagId)
+}

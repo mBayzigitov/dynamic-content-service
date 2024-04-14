@@ -16,8 +16,8 @@ const (
 	TagIdParam           = "tag_id"
 	FeatureIdParam       = "feature_id"
 	UseLastRevisionParam = "use_last_revision"
-	LimitParam = "limit"
-	OffsetParam = "offset"
+	LimitParam           = "limit"
+	OffsetParam          = "offset"
 	BannerIdPathVariable = "bannerId"
 )
 
@@ -41,6 +41,7 @@ func (bh *BannerHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/banner", bh.handleBannerFilter).Methods("GET")
 	router.HandleFunc("/banner", bh.handleBannerCreation).Methods("POST")
 	router.HandleFunc("/banner/{bannerId}", bh.handleBannerDeletion).Methods("DELETE")
+	router.HandleFunc("/banner", bh.handleDeleteByFeatureOrTag).Methods("DELETE")
 	router.HandleFunc("/banner/{bannerId}", bh.handleBannerChange).Methods("PATCH")
 }
 
@@ -294,4 +295,45 @@ func (bh *BannerHandler) parsePosInt(tg string, pname string) (int64, *serverr.A
 	}
 
 	return val, nil
+}
+
+func (bh *BannerHandler) handleDeleteByFeatureOrTag(w http.ResponseWriter, r *http.Request) {
+	accessErr := bh.adminOnlyAccess(r)
+	if accessErr != nil {
+		http.Error(w, accessErr.JsonBody(), accessErr.HttpStatus)
+		return
+	}
+	var apierr *serverr.ApiError
+	var tagId, featureId int64
+
+	// parse params
+	ti := r.URL.Query().Get(TagIdParam)
+	fi := r.URL.Query().Get(FeatureIdParam)
+
+	featureId, apierr = bh.parsePosInt(fi, "featureId")
+	if apierr != nil {
+		bh.l.Info(apierr.Error())
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	tagId, apierr = bh.parsePosInt(ti, "tagId")
+	if apierr != nil {
+		bh.l.Info(apierr.Error())
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	if (featureId == 0 && tagId == 0) || (featureId != 0 && tagId != 0) {
+		apierr = serverr.NewInvalidRequestError("Укажите либо feature_id, либо tag_id в отдельности")
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+		return
+	}
+
+	// call service method and return response
+	if apierr := bh.service.DeleteByFeatureOrTagId(featureId, tagId); apierr != nil {
+		http.Error(w, apierr.JsonBody(), apierr.HttpStatus)
+	} else {
+		w.WriteHeader(200)
+	}
 }
