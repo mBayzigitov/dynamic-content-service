@@ -63,6 +63,41 @@ func (br *BannerRepository) DoTagsExist(tagsIds []int64) (bool, error) {
 	return count == len(tagsIds), nil
 }
 
+func (br *BannerRepository) DeleteMarkedBanners() error {
+	// start a transaction
+	tx, err := br.p.Begin(context.Background())
+	if err != nil {
+		br.l.Fatal(err)
+		return err
+	}
+	defer func() {
+		if pm := recover(); pm != nil {
+			tx.Rollback(context.Background())
+			panic(pm)
+		} else if err != nil {
+			br.l.Fatal(err)
+			tx.Rollback(context.Background())
+		} else {
+			err = tx.Commit(context.Background())
+		}
+	}()
+
+	// delete banners marked as to_delete
+	_, err = tx.Exec(context.Background(), `
+		DELETE FROM banners
+		WHERE to_delete = true
+	`)
+	if err != nil {
+		br.l.Fatal(err)
+		return err
+	}
+
+	br.l.Info("Banners marked as to_delete have been cleaned up successfully")
+
+	return nil
+}
+
+
 // CheckIfDuplicates
 // Method that checks if a bunch of key (banner_id-feature_id-tag_id) already
 // exists to satisfy the condition of unambigious definition
@@ -599,7 +634,9 @@ func (br *BannerRepository) GetBannersByFilter(featureId int64, tagId int64, lim
 		}
 	}
 
-	banners = append(banners, curModel)
+	if curModel.Id != 0 {
+		banners = append(banners, curModel)
+	}
 
 	return banners, nil
 }
