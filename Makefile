@@ -19,17 +19,20 @@ run-rebuild:
 .PHONY: test
 test:
 	docker-compose --env-file ./test/config/environ/db.env -f docker-compose-test.yaml up --build -d
-	go test -v "test/main_test.go" "test/get_banner_test.go"
-	docker-compose stop
+	go test -v "test/main_test.go" "test/get_banner_test.go" && docker-compose --env-file ./test/config/environ/db.env -f docker-compose-test.yaml stop
 
 .PHONY: down
 down:
-	docker-compose down
+	docker-compose -f docker-compose.yaml down
+
+.PHONY: down-tests
+down-tests:
+	docker-compose -f docker-compose-test.yaml down
 
 .PHONY: down-v
 down-v:
-	docker-compose down --volumes
+	docker-compose -f docker-compose.yaml down --volumes
 
 .PHONY: stop
 stop:
-	docker-compose stop
+	docker-compose -f docker-compose-test.yaml stop
