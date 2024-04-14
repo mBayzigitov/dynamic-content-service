@@ -3,11 +3,13 @@ package service
 import (
 	"encoding/json"
 	"fmt"
+	"github.com/jasonlvhit/gocron"
 	"github.com/mBayzigitov/dynamic-content-service/internal/dto"
 	"github.com/mBayzigitov/dynamic-content-service/internal/models"
 	"github.com/mBayzigitov/dynamic-content-service/internal/repo"
 	"github.com/mBayzigitov/dynamic-content-service/internal/util/serverr"
 	"go.uber.org/zap"
+	"log"
 	"time"
 )
 
@@ -17,14 +19,31 @@ type BannerService struct {
 	l     *zap.SugaredLogger
 	br    *repo.BannerRepository
 	redis *repo.CacheRepo
+	s     *gocron.Scheduler
 }
 
 func NewBannerService(br *repo.BannerRepository, redis *repo.CacheRepo) *BannerService {
 	loginst, _ := zap.NewDevelopment()
+
+	// create a new scheduler and start a sched task
+	// run every day at 3am to clean banners marked as to_delete
+	s := gocron.NewScheduler()
+	err := s.Every(1).Day().At("03:30").Do(br.DeleteMarkedBanners)
+	if err != nil {
+		log.Fatalln(err)
+		return nil
+	}
+
+	// Start the scheduler in the background
+	go func() {
+		<-s.Start()
+	}()
+
 	return &BannerService{
 		br:    br,
 		l:     loginst.Sugar(),
 		redis: redis,
+		s:     s,
 	}
 }
 
@@ -65,7 +84,7 @@ func (bs *BannerService) GetBanner(tagId int64, featureId int64, useLastRevision
 		return banner, serverr.BannerNotFoundError
 	}
 
-	if !useLastRevision	{
+	if !useLastRevision {
 		err = bs.redis.Set(
 			key,
 			string(banner.Content),
