@@ -28,6 +28,7 @@ type BannerTagsModel struct {
 	ToDelete     bool
 }
 
+// @schema BannerVersion
 type BannerVersion struct {
 	BannerId  string          `json:"banner_id"`
 	Version   int64           `json:"version"`

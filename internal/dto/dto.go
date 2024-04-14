@@ -14,6 +14,7 @@ type ValidationEntity interface {
 	Validate(v *validator.Validate) *serverr.ApiError
 }
 
+// @schema CreateBannerDto
 type CreateBannerDto struct {
 	TagIds    []int64         `json:"tag_ids" validate:"required"`
 	FeatureId int64           `json:"feature_id" validate:"required"`
@@ -21,6 +22,7 @@ type CreateBannerDto struct {
 	IsActive  bool            `json:"is_active"`
 }
 
+// @schema ChangeBannerDto
 type ChangeBannerDto struct {
 	TagIds    []int64          `json:"tag_ids"`
 	FeatureId *int64           `json:"feature_id"`
@@ -28,14 +30,22 @@ type ChangeBannerDto struct {
 	IsActive  *bool            `json:"is_active"`
 }
 
+// @schema CreateBannerResponseDto
 type CreateBannerResponseDto struct {
 	BannerId int64 `json:"banner_id"`
 }
 
+// @schema GetBannerResponseDto
 type GetBannerResponseDto struct {
-	Content json.RawMessage `json:"content"`
+	Content json.RawMessage `json:"content"` // JSON-отображение баннера
 }
 
+// @schema ErrorResponseDto
+type ErrorResponseDto struct {
+	Error string `json:"error"`
+}
+
+// @schema FilterBannersResponseDto
 type FilterBannersResponseDto struct {
 	BannerId  int64           `json:"banner_id"`
 	TagIds    []int64         `json:"tag_ids"`
@@ -47,6 +57,7 @@ type FilterBannersResponseDto struct {
 	UpdatedAt time.Time       `json:"updated_at"`
 }
 
+// @schema GetVersionsResponseDto
 type GetVersionsResponseDto struct {
 	Versions []models.BannerVersion `json:"versions"`
 }

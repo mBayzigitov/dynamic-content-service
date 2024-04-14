@@ -13,12 +13,12 @@ import (
 )
 
 const (
-	TagIdParam           = "tag_id"
-	FeatureIdParam       = "feature_id"
-	UseLastRevisionParam = "use_last_revision"
-	LimitParam           = "limit"
-	OffsetParam          = "offset"
-	BannerIdPathVariable = "bannerId"
+	TagIdParam            = "tag_id"
+	FeatureIdParam        = "feature_id"
+	UseLastRevisionParam  = "use_last_revision"
+	LimitParam            = "limit"
+	OffsetParam           = "offset"
+	BannerIdPathVariable  = "bannerId"
 	VersionIdPathVariable = "versionId"
 )
 
@@ -37,6 +37,12 @@ func NewHandler(service *service.BannerService) *BannerHandler {
 	}
 }
 
+// RegisterRoutes
+// @title Banner-service API
+// @version 1.0
+// @description API для управления динамическим контентом пользователей
+// @BasePath /api/v1
+// @host locahlost:8080
 func (bh *BannerHandler) RegisterRoutes(router *mux.Router) {
 	router.HandleFunc("/user_banner", bh.handleBannerGetting).Methods("GET")
 
@@ -67,6 +73,24 @@ func (bh *BannerHandler) adminOnlyAccess(r *http.Request) *serverr.ApiError {
 }
 
 // -------- Handler functions --------
+
+//	@Summary		Получение баннера для пользователя
+//	@Description	Возвращает баннер на основании featureId, tagId и useLastRevision
+//	@Tags			banner
+//	@Param			tag_id				query	integer	true	"Идентификатор тэга группы пользователей"
+//	@Param			feature_id			query	integer	true	"Идентификатор фичи"
+//	@Param			use_last_revision	query	boolean	false	"Получать актуальную информацию"
+//
+// @Param X-Access-Token header string true "Токен пользователя"
+//
+//	@Produce		json
+//	@Success		200	{object} any "JSON-отображение баннера"
+//	@Failure		400	{object} dto.ErrorResponseDto "Некорректные данные"
+//	@Failure		401	"Пользователь не авторизован"
+//	@Failure		403	"Пользователь не имеет доступа"
+//	@Failure		404	"Баннер не найден"
+//	@Failure		500	{object} dto.ErrorResponseDto "Внутренняя ошибка сервера"
+//	@Router			/user_banner [get]
 func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Request) {
 	// parse params
 	ti := r.URL.Query().Get(TagIdParam)
@@ -115,6 +139,19 @@ func (bh *BannerHandler) handleBannerGetting(w http.ResponseWriter, r *http.Requ
 	}
 }
 
+// @Summary		Создание нового баннера.
+// @Description	Создает новый баннер на основании переданного тела запроса
+// @Tags		banner
+// @Accept		json
+// @Param		request	body dto.CreateBannerDto true "Содержимое баннера"
+// @Param 	    X-Access-Token header string true "Токен админа"
+// @Produce		json
+// @Success		201	{object} dto.CreateBannerResponseDto "Created"
+// @Failure		400	{object} dto.ErrorResponseDto "Некорректные данные"
+// @Failure		401	"Пользователь не авторизован"
+// @Failure		403	"Пользователь не имеет доступа"
+// @Failure		500	{object} dto.ErrorResponseDto "Внутренняя ошибка сервера"
+// @Router	/banner [post]
 func (bh *BannerHandler) handleBannerCreation(w http.ResponseWriter, r *http.Request) {
 	accessErr := bh.adminOnlyAccess(r)
 	if accessErr != nil {
@@ -147,6 +184,21 @@ func (bh *BannerHandler) handleBannerCreation(w http.ResponseWriter, r *http.Req
 	}
 }
 
+//	@Summary		Удаление банера
+//	@Description	Удаляет баннер по banner_id
+//	@Tags			banner
+//	@Param			bannerId path integer true "Идентификатор баннера"
+//
+// @Param X-Access-Token header string true "Токен админа"
+//
+//	@Produce		json
+//	@Success		204	"Баннер успешно удалён"
+//	@Failure		400	{object} dto.ErrorResponseDto "Некорректные данные"
+//	@Failure		401	"Пользователь не авторизован"
+//	@Failure		403	"Пользователь не имеет доступа"
+//	@Failure		404	"Баннер не найден"
+//	@Failure		500	{object} dto.ErrorResponseDto "Внутренняя ошибка сервера"
+//	@Router			/banner/{bannerId} [delete]
 func (bh *BannerHandler) handleBannerDeletion(w http.ResponseWriter, r *http.Request) {
 	accessErr := bh.adminOnlyAccess(r)
 	if accessErr != nil {
@@ -182,6 +234,23 @@ func (bh *BannerHandler) handleBannerDeletion(w http.ResponseWriter, r *http.Req
 	}
 }
 
+//	@Summary		Изменение баннера
+//	@Description	Изменяет баннер по данным из тела запроса
+//	@Tags			banner
+//	@Param			bannerId path integer	true "Идентификатор баннера"
+//	@Accept			json
+//	@Param			request	body dto.ChangeBannerDto true	"Шаблон изменений баннера"
+//
+// @Param X-Access-Token header string true "Токен админа"
+//
+//	@Produce		json
+//	@Success		200	"Баннер успешно обновлён"
+//	@Failure		400	{object} dto.ErrorResponseDto "Некорректные данные"
+//	@Failure		401	"Пользователь не авторизован"
+//	@Failure		403	"Пользователь не имеет доступа"
+//	@Failure		404	"Баннер не найден"
+//	@Failure		500	{object} dto.ErrorResponseDto "Внутренняя ошибка сервера"
+//	@Router			/banner/{bannerId} [patch]
 func (bh *BannerHandler) handleBannerChange(w http.ResponseWriter, r *http.Request) {
 	accessErr := bh.adminOnlyAccess(r)
 	if accessErr != nil {
@@ -227,6 +296,23 @@ func (bh *BannerHandler) handleBannerChange(w http.ResponseWriter, r *http.Reque
 	}
 }
 
+//	@Summary		Получение всех баннеров c фильтрацией по фиче и/или тегу
+//	@Description	Возвращает список баннеров по заданным feature_id и tag_id
+//	@Tags			banner
+//	@Param			tag_id		query	integer	false	"Идентификатор тэга группы пользователей"
+//	@Param			feature_id	query	integer	false	"Идентификатор фичи"
+//	@Param			limit		query	integer	false	"Лимит"
+//	@Param			offset		query	integer	false	"Оффсет"
+//
+// @Param X-Access-Token header string true "Токен админа"
+//
+//	@Produce		json
+//	@Success		200	{array}	dto.FilterBannersResponseDto "OK"
+//	@Failure		400	{object} dto.ErrorResponseDto "Некорректные данные"
+//	@Failure		401	"Пользователь не авторизован"
+//	@Failure		403	"Пользователь не имеет доступа"
+//	@Failure		500	{object} dto.ErrorResponseDto "Внутренняя ошибка сервера"
+//	@Router			/banner [get]
 func (bh *BannerHandler) handleBannerFilter(w http.ResponseWriter, r *http.Request) {
 	accessErr := bh.adminOnlyAccess(r)
 	if accessErr != nil {
@@ -302,6 +388,23 @@ func (bh *BannerHandler) parsePosInt(tg string, pname string) (int64, *serverr.A
 	return val, nil
 }
 
+//		@Summary		Удаление всех баннеров с указанным feature_id или tag_id
+//		@Description	Удаляет баннеры на основе фильтра по фиче или тегу.
+//	    @Description    Требуется указать только один из параметров
+//		@Tags			banner
+//		@Param			tag_id		query	integer	false	"Идентификатор тэга группы пользователей"
+//		@Param			feature_id	query	integer	false	"Идентификатор фичи"
+//
+// @Param X-Access-Token header string true "Токен админа"
+//
+//	@Produce		json
+//	@Success		200	"Баннеры удалены"
+//	@Failure		400	{object} dto.ErrorResponseDto "Некорректные данные"
+//	@Failure		401	"Пользователь не авторизован"
+//	@Failure		403	"Пользователь не имеет доступа"
+//	@Failure		404	"Фича или тэг не найдены"
+//	@Failure		500	{object} dto.ErrorResponseDto "Внутренняя ошибка сервера"
+//	@Router			/banner [delete]
 func (bh *BannerHandler) handleDeleteByFeatureOrTag(w http.ResponseWriter, r *http.Request) {
 	accessErr := bh.adminOnlyAccess(r)
 	if accessErr != nil {
@@ -343,6 +446,20 @@ func (bh *BannerHandler) handleDeleteByFeatureOrTag(w http.ResponseWriter, r *ht
 	}
 }
 
+//	@Summary		Получение версий баннера
+//	@Description	Возвращает версии баннера, имеющего указанный bannerId
+//	@Tags			banner
+//	@Param			bannerId path integer true "Идентификатор баннера"
+//
+// @Param X-Access-Token header string true "Токен админа"
+//
+//	@Produce		json
+//	@Success		200	{array} dto.GetVersionsResponseDto "Массив версий баннера"
+//	@Failure		400	{object} dto.ErrorResponseDto "Некорректные данные"
+//	@Failure		401	"Пользователь не авторизован"
+//	@Failure		403	"Пользователь не имеет доступа"
+//	@Failure		500	{object} dto.ErrorResponseDto "Внутренняя ошибка сервера"
+//	@Router			/banner/{bannerId}/ver [get]
 func (bh *BannerHandler) handleGetVersions(w http.ResponseWriter, r *http.Request) {
 	accessErr := bh.adminOnlyAccess(r)
 	if accessErr != nil {
@@ -381,6 +498,24 @@ func (bh *BannerHandler) handleGetVersions(w http.ResponseWriter, r *http.Reques
 	}
 }
 
+//	@Summary		Установка определенной версии для баннера
+//	@Description	Устанавливает баннеру контекст этой версии: изменяет контент, связанные тэги, фичу и др.
+//	Удаляет все версии, которые были созданы после нее (логика формата revert)
+//	@Tags			banner
+//	@Param			bannerId path integer true "Идентификатор баннера"
+//	@Param			versionId path integer true "Идентификатор версии"
+//	@Accept			json
+//
+// @Param X-Access-Token header string true "Токен админа"
+//
+//	@Produce		json
+//	@Success		200	"Баннеру успешно выставлена указанная версия"
+//	@Failure		400	{object} dto.ErrorResponseDto "Некорректные данные"
+//	@Failure		401	"Пользователь не авторизован"
+//	@Failure		403	"Пользователь не имеет доступа"
+//	@Failure		404	"Баннер или фича не найдены"
+//	@Failure		500	{object} dto.ErrorResponseDto "Внутренняя ошибка сервера"
+//	@Router			/banner/{bannerId}/ver/{versionId} [patch]
 func (bh *BannerHandler) handleSetVersion(w http.ResponseWriter, r *http.Request) {
 	accessErr := bh.adminOnlyAccess(r)
 	if accessErr != nil {

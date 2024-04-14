@@ -1,0 +1,436 @@
+basePath: /api/v1
+definitions:
+  dto.ChangeBannerDto:
+    properties:
+      content:
+        items:
+          type: integer
+        type: array
+      feature_id:
+        type: integer
+      is_active:
+        type: boolean
+      tag_ids:
+        items:
+          type: integer
+        type: array
+    type: object
+  dto.CreateBannerDto:
+    properties:
+      content:
+        items:
+          type: integer
+        type: array
+      feature_id:
+        type: integer
+      is_active:
+        type: boolean
+      tag_ids:
+        items:
+          type: integer
+        type: array
+    required:
+    - content
+    - feature_id
+    - tag_ids
+    type: object
+  dto.CreateBannerResponseDto:
+    properties:
+      banner_id:
+        type: integer
+    type: object
+  dto.ErrorResponseDto:
+    properties:
+      error:
+        type: string
+    type: object
+  dto.FilterBannersResponseDto:
+    properties:
+      banner_id:
+        type: integer
+      content:
+        items:
+          type: integer
+        type: array
+      created_at:
+        type: string
+      feature_id:
+        type: integer
+      is_active:
+        type: boolean
+      tag_ids:
+        items:
+          type: integer
+        type: array
+      to_delete:
+        type: boolean
+      updated_at:
+        type: string
+    type: object
+  dto.GetVersionsResponseDto:
+    properties:
+      versions:
+        items:
+          $ref: '#/definitions/models.BannerVersion'
+        type: array
+    type: object
+  models.BannerVersion:
+    properties:
+      banner_id:
+        type: string
+      content:
+        items:
+          type: integer
+        type: array
+      created_at:
+        type: string
+      feature_id:
+        type: integer
+      tags:
+        type: string
+      version:
+        type: integer
+    type: object
+host: locahlost:8080
+info:
+  contact: {}
+  description: API для управления динамическим контентом пользователей
+  title: Banner-service API
+  version: "1.0"
+paths:
+  /banner:
+    delete:
+      description: |-
+        Удаляет баннеры на основе фильтра по фиче или тегу.
+        Требуется указать только один из параметров
+      parameters:
+      - description: Идентификатор тэга группы пользователей
+        in: query
+        name: tag_id
+        type: integer
+      - description: Идентификатор фичи
+        in: query
+        name: feature_id
+        type: integer
+      - description: Токен админа
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Баннеры удалены
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+        "401":
+          description: Пользователь не авторизован
+        "403":
+          description: Пользователь не имеет доступа
+        "404":
+          description: Фича или тэг не найдены
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+      summary: Удаление всех баннеров с указанным feature_id или tag_id
+      tags:
+      - banner
+    get:
+      description: Возвращает список баннеров по заданным feature_id и tag_id
+      parameters:
+      - description: Идентификатор тэга группы пользователей
+        in: query
+        name: tag_id
+        type: integer
+      - description: Идентификатор фичи
+        in: query
+        name: feature_id
+        type: integer
+      - description: Лимит
+        in: query
+        name: limit
+        type: integer
+      - description: Оффсет
+        in: query
+        name: offset
+        type: integer
+      - description: Токен админа
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: OK
+          schema:
+            items:
+              $ref: '#/definitions/dto.FilterBannersResponseDto'
+            type: array
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+        "401":
+          description: Пользователь не авторизован
+        "403":
+          description: Пользователь не имеет доступа
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+      summary: Получение всех баннеров c фильтрацией по фиче и/или тегу
+      tags:
+      - banner
+    post:
+      consumes:
+      - application/json
+      description: Создает новый баннер на основании переданного тела запроса
+      parameters:
+      - description: Содержимое баннера
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.CreateBannerDto'
+      - description: Токен админа
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "201":
+          description: Created
+          schema:
+            $ref: '#/definitions/dto.CreateBannerResponseDto'
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+        "401":
+          description: Пользователь не авторизован
+        "403":
+          description: Пользователь не имеет доступа
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+      summary: Создание нового баннера.
+      tags:
+      - banner
+  /banner/{bannerId}:
+    delete:
+      description: Удаляет баннер по banner_id
+      parameters:
+      - description: Идентификатор баннера
+        in: path
+        name: bannerId
+        required: true
+        type: integer
+      - description: Токен админа
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "204":
+          description: Баннер успешно удалён
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+        "401":
+          description: Пользователь не авторизован
+        "403":
+          description: Пользователь не имеет доступа
+        "404":
+          description: Баннер не найден
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+      summary: Удаление банера
+      tags:
+      - banner
+    patch:
+      consumes:
+      - application/json
+      description: Изменяет баннер по данным из тела запроса
+      parameters:
+      - description: Идентификатор баннера
+        in: path
+        name: bannerId
+        required: true
+        type: integer
+      - description: Шаблон изменений баннера
+        in: body
+        name: request
+        required: true
+        schema:
+          $ref: '#/definitions/dto.ChangeBannerDto'
+      - description: Токен админа
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Баннер успешно обновлён
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+        "401":
+          description: Пользователь не авторизован
+        "403":
+          description: Пользователь не имеет доступа
+        "404":
+          description: Баннер не найден
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+      summary: Изменение баннера
+      tags:
+      - banner
+  /banner/{bannerId}/ver:
+    get:
+      description: Возвращает версии баннера, имеющего указанный bannerId
+      parameters:
+      - description: Идентификатор баннера
+        in: path
+        name: bannerId
+        required: true
+        type: integer
+      - description: Токен админа
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Массив версий баннера
+          schema:
+            items:
+              $ref: '#/definitions/dto.GetVersionsResponseDto'
+            type: array
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+        "401":
+          description: Пользователь не авторизован
+        "403":
+          description: Пользователь не имеет доступа
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+      summary: Получение версий баннера
+      tags:
+      - banner
+  /banner/{bannerId}/ver/{versionId}:
+    patch:
+      consumes:
+      - application/json
+      description: 'Устанавливает баннеру контекст этой версии: изменяет контент,
+        связанные тэги, фичу и др.'
+      parameters:
+      - description: Идентификатор баннера
+        in: path
+        name: bannerId
+        required: true
+        type: integer
+      - description: Идентификатор версии
+        in: path
+        name: versionId
+        required: true
+        type: integer
+      - description: Токен админа
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: Баннеру успешно выставлена указанная версия
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+        "401":
+          description: Пользователь не авторизован
+        "403":
+          description: Пользователь не имеет доступа
+        "404":
+          description: Баннер или фича не найдены
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+      summary: Установка определенной версии для баннера
+      tags:
+      - banner
+  /user_banner:
+    get:
+      description: Возвращает баннер на основании featureId, tagId и useLastRevision
+      parameters:
+      - description: Идентификатор тэга группы пользователей
+        in: query
+        name: tag_id
+        required: true
+        type: integer
+      - description: Идентификатор фичи
+        in: query
+        name: feature_id
+        required: true
+        type: integer
+      - description: Получать актуальную информацию
+        in: query
+        name: use_last_revision
+        type: boolean
+      - description: Токен пользователя
+        in: header
+        name: X-Access-Token
+        required: true
+        type: string
+      produces:
+      - application/json
+      responses:
+        "200":
+          description: JSON-отображение баннера
+          schema:
+            type: object
+        "400":
+          description: Некорректные данные
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+        "401":
+          description: Пользователь не авторизован
+        "403":
+          description: Пользователь не имеет доступа
+        "404":
+          description: Баннер не найден
+        "500":
+          description: Внутренняя ошибка сервера
+          schema:
+            $ref: '#/definitions/dto.ErrorResponseDto'
+      summary: Получение баннера для пользователя
+      tags:
+      - banner
+swagger: "2.0"
